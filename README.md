@@ -52,7 +52,8 @@ it for you** — you never have to open Terminal.
 ## Updating
 
 Download the new `.skill` files from Releases and install them the same way — the new
-version replaces the old one.
+version replaces the old one. **Then start a new chat** — Claude loads skills when a
+session begins, so an update doesn't apply to chats that are already open.
 
 ---
 

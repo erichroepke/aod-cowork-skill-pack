@@ -136,6 +136,9 @@ self-contained, dark post-production aesthetic. Include:
    formats (ProRes/MXF/RAW): show the path with a copy button and a note that
    they'll play in any pro player — and offer to make web proxies (see below).
 6. **No external dependencies** — single file, embedded JSON, plain HTML/CSS/JS.
+7. **Build all DOM with `createElement`/`textContent` — never `innerHTML` with data.**
+   Transcript text and filenames are untrusted strings; textContent keeps a stray
+   `<` in someone's transcript from breaking (or scripting) the page.
 
 **Proxies for unplayable formats:** if ffmpeg is available (it is when footage-analyst
 is installed), offer: "Want me to make small preview copies of the ProRes clips so they

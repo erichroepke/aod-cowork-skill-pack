@@ -203,7 +203,9 @@ full scan would take before offering it.
 
 **1. Propose.** Build a numbered move plan from the scan: every misplaced file/folder,
 its destination in the framework, and why. Ambiguous items (can't infer shoot/date)
-become QUESTIONS for the user, not guesses. Save the plan as `_move_plan.json`:
+become QUESTIONS for the user, not guesses. **Sidecar files (`.xxh64`, `.md5`, `.xml`
+camera sidecars) always travel with their media file — include them as their own plan
+lines next to the media they belong to.** Save the plan as `_move_plan.json`:
 
 ```json
 [
