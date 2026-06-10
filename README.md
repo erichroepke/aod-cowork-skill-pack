@@ -49,6 +49,24 @@ it for you** — you never have to open Terminal.
 > setup downloads ~4 GB of free, local AI tools and takes 10–20 minutes, and the
 > skill walks you through all of it.
 
+## Your first five minutes (just say these)
+
+Everything in this pack is driven by talking to Claude. There's no app to learn —
+these prompts are the product:
+
+1. **"Check my footage folder"** → full audit report of your connected drive
+2. **"Okay, organize it"** → Claude proposes a move plan, asks about your backup,
+   and only acts when you approve
+3. **"Index this drive — call it [your drive's name]"** → the drive becomes
+   permanently searchable
+4. **"Show me my footage library"** → a visual page of your clips, built from
+   *your* footage (clips that your browser can't preview show their location
+   instead — Safari plays the most formats)
+5. **"Transcribe this interview"** → transcript with timecodes (first run installs
+   the free transcription engine — Claude walks you through it)
+6. Months later: **"Which drive has the interview where she talks about her
+   father?"** → drive name, file, timecode.
+
 ## Updating
 
 Download the new `.skill` files from Releases and install them the same way — the new

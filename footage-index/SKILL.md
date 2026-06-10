@@ -130,11 +130,16 @@ self-contained, dark post-production aesthetic. Include:
    text, tags)
 4. **Clip cards** — name, shoot, date, camera/card, drive badge (grey badge + "offline"
    note if that drive isn't currently mounted), transcript snippet count
-5. **Playback** — for `web_playable` files on a *mounted* drive, an embedded
-   `<video>` player (URI-encode the `file://` path). Clicking a transcript snippet
-   seeks the player to that timecode (`video.currentTime = start`). Non-playable
-   formats (ProRes/MXF/RAW): show the path with a copy button and a note that
-   they'll play in any pro player — and offer to make web proxies (see below).
+5. **Playback** — for `web_playable` files, an embedded `<video>` player.
+   **Save the page in the project root and use RELATIVE paths** for src (URI-encode
+   each path segment) — never absolute `file://` URLs. **Attach an `error` listener
+   to every video** that replaces the player with a useful fallback (clip can't
+   preview in this browser → show the path + "try Safari or any video player").
+   Browsers genuinely differ: Safari plays `.mov`, Chromium-family often won't —
+   the page must degrade per-clip, never look broken. Clicking a transcript snippet
+   seeks the player (`video.currentTime = start`). Known-unplayable formats
+   (ProRes/MXF/RAW): skip the player entirely, show the path, and offer to make
+   web proxies (see below).
 6. **No external dependencies** — single file, embedded JSON, plain HTML/CSS/JS.
 7. **Build all DOM with `createElement`/`textContent` — never `innerHTML` with data.**
    Transcript text and filenames are untrusted strings; textContent keeps a stray
