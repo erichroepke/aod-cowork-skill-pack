@@ -275,11 +275,27 @@ def cmd_stats(con, args):
     s = con.execute("SELECT COUNT(*) FROM segments").fetchone()[0]
     t = con.execute("SELECT COUNT(*) FROM tags").fetchone()[0]
     print(f"\n📚 Footage Index")
-    for name, last in con.execute("SELECT name, last_seen FROM drives ORDER BY name"):
-        n = con.execute("SELECT COUNT(*) FROM files f JOIN drives d ON d.id=f.drive_id "
-                        "WHERE d.name=?", (name,)).fetchone()[0]
-        print(f"   💾 {name}: {n} files (last seen {last})")
-    print(f"   {f[0]} files · {f[1] / 1024**3:.1f} GB · {s} transcript segments · {t} tags\n")
+    for did, name, last in con.execute("SELECT id, name, last_seen FROM drives ORDER BY name"):
+        n = con.execute("SELECT COUNT(*) FROM files WHERE drive_id=?", (did,)).fetchone()[0]
+        tr = con.execute("SELECT COUNT(DISTINCT file_id) FROM segments s "
+                         "JOIN files f ON f.id=s.file_id WHERE f.drive_id=?", (did,)).fetchone()[0]
+        print(f"   💾 {name}: {n} files · {tr} transcribed (last seen {last})")
+        for shoot, cnt in con.execute(
+                "SELECT COALESCE(shoot,'(no shoot folder)'), COUNT(*) FROM files "
+                "WHERE drive_id=? GROUP BY shoot ORDER BY shoot", (did,)):
+            print(f"      🎬 {shoot}: {cnt} file(s)")
+    transcribed = con.execute("SELECT COUNT(DISTINCT file_id) FROM segments").fetchone()[0]
+    tagged = con.execute("SELECT COUNT(DISTINCT file_id) FROM tags WHERE kind='person'").fetchone()[0]
+    pct = (100 * transcribed // f[0]) if f[0] else 0
+    print(f"\n   TOTALS: {f[0]} files · {f[1] / 1024**3:.1f} GB · {s} transcript segments · {t} tags")
+    print(f"   🔎 Content search covers {transcribed}/{f[0]} files ({pct}%) — "
+          f"the rest are findable by name/shoot only")
+    print(f"   👤 {tagged} file(s) have people tagged")
+    if f[0] and transcribed < f[0]:
+        print(f"   💡 To make more footage searchable by what's said: run footage-analyst "
+              f"on the untranscribed clips\n")
+    else:
+        print()
 
 
 def cmd_export_library(con, args):
