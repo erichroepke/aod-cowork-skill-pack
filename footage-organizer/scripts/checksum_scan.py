@@ -29,22 +29,32 @@ MEDIA_EXTENSIONS = {
 }
 
 
-def xxhash_file(path):
-    """Compute xxHash64 of a file. Falls back to MD5 if xxhash not installed."""
-    try:
-        import xxhash
+def hash_file(path, algo):
+    """Compute a file hash for a specific sidecar algorithm."""
+    if algo == 'xxh64':
+        try:
+            import xxhash
+        except ImportError as exc:
+            raise RuntimeError('xxhash unavailable') from exc
         h = xxhash.xxh64()
-        with open(path, 'rb') as f:
-            while chunk := f.read(8 * 1024 * 1024):  # 8MB chunks
-                h.update(chunk)
-        return h.hexdigest(), 'xxh64'
-    except ImportError:
+    elif algo == 'md5':
         import hashlib
         h = hashlib.md5()
-        with open(path, 'rb') as f:
-            while chunk := f.read(8 * 1024 * 1024):
-                h.update(chunk)
-        return h.hexdigest(), 'md5'
+    else:
+        raise ValueError(f'unsupported checksum algorithm: {algo}')
+
+    with open(path, 'rb') as f:
+        while chunk := f.read(8 * 1024 * 1024):  # 8MB chunks
+            h.update(chunk)
+    return h.hexdigest(), algo
+
+
+def preferred_hash_file(path):
+    """Compute xxHash64 when available. Falls back to MD5 for new local sidecars."""
+    try:
+        return hash_file(path, 'xxh64')
+    except RuntimeError:
+        return hash_file(path, 'md5')
 
 
 def sidecar_path(file_path, algo):
@@ -97,25 +107,30 @@ def scan(root_path, write_sidecars=False):
         print(f"  [{i}/{total}] {rel} ({human_size(size)})", end=' ', flush=True)
 
         t0 = time.time()
-        computed, algo = xxhash_file(fpath)
-        elapsed = time.time() - t0
-        speed = size / elapsed / (1024**2) if elapsed > 0 else 0
 
-        # Check for existing sidecar — only compare hashes of the SAME algorithm
+        # Check for existing sidecar — compute the sidecar's own algorithm when possible.
         existing = read_sidecar(fpath)
         if existing is None:
             existing_hash = None
+            computed, algo = preferred_hash_file(fpath)
             status, icon = 'no_sidecar', '⚪'
         else:
             existing_hash, existing_algo = existing
-            if existing_algo != algo:
-                # A sidecar exists but this machine computes a different algorithm.
+            try:
+                computed, algo = hash_file(fpath, existing_algo)
+            except RuntimeError:
+                # A xxhash sidecar exists but this machine cannot compute xxhash.
                 # NOT verified, NOT assumed corrupt — and never silently replaced.
+                computed, algo = preferred_hash_file(fpath)
                 status, icon = 'sidecar_unverifiable', '🟠'
-            elif existing_hash.lower() == computed.lower():
-                status, icon = 'verified', '✅'
             else:
-                status, icon = 'mismatch', '🔴'
+                if existing_hash.lower() == computed.lower():
+                    status, icon = 'verified', '✅'
+                else:
+                    status, icon = 'mismatch', '🔴'
+
+        elapsed = time.time() - t0
+        speed = size / elapsed / (1024**2) if elapsed > 0 else 0
 
         print(f"{icon} {computed[:12]}... [{algo}] {speed:.0f} MB/s")
 
@@ -151,8 +166,9 @@ def scan(root_path, write_sidecars=False):
     print(f"  🔴 Mismatches:  {len(mismatches)}")
     if unverifiable:
         print(f"  🟠 Unverifiable: {unverifiable} — sidecars exist but use a different "
-              f"algorithm than this machine computes.")
-        print(f"     Install xxhash (pip3 install xxhash) to verify them. These files "
+              f"algorithm than this machine can compute.")
+        print(f"     Install xxhash (pip3 install xxhash) to verify xxHash sidecars. "
+              f"MD5 sidecars are verified without extra tools. These files "
               f"were NOT checked and NOT modified.")
 
     if mismatches:

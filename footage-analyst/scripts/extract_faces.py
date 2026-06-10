@@ -44,6 +44,22 @@ def check_dependencies():
     return missing
 
 
+CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
+                'AVCHD', 'BDMV'}
+
+def output_path_is_unsafe(output_dir):
+    parts = [p.upper() for p in output_dir.resolve().parts]
+    if '01_FOOTAGE' in parts:
+        return True
+    for i, part in enumerate(parts):
+        # macOS temp paths resolve under /private/var; that is not a camera card.
+        if part == 'PRIVATE' and i == 1:
+            continue
+        if part in CARD_MARKERS:
+            return True
+    return False
+
+
 def extract_frames(video_path, output_dir, interval=3):
     """Extract frames from video at given interval (seconds)."""
     frames_dir = Path(output_dir) / 'frames'
@@ -211,10 +227,7 @@ def main():
 
     out_dir = Path(args.output)
     # SAFETY FENCE: never write analysis output inside footage/card folders
-    CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
-                    'AVCHD', 'BDMV'}
-    out_parts = {p.upper() for p in out_dir.resolve().parts}
-    if out_parts & CARD_MARKERS or '01_FOOTAGE' in out_parts:
+    if output_path_is_unsafe(out_dir):
         print(f"❌ Refusing: --output points inside a footage/card folder ({args.output}).")
         print("   Choose an output OUTSIDE your footage — e.g. 09_exports/ or a "
               "separate analysis folder.")

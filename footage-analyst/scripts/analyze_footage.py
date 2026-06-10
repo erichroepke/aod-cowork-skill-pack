@@ -7,6 +7,7 @@ and generates a self-contained HTML report.
 
 import argparse
 import base64
+import html as html_lib
 import json
 import os
 import shutil
@@ -29,9 +30,9 @@ def fmt_time(seconds):
     return f"{m}:{s:02d}"
 
 def run(cmd, desc=""):
-    """Run a shell command, print progress, raise on failure."""
-    print(f"  ▸ {desc or cmd[:80]}")
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    """Run a command without shell interpolation, print progress, raise on failure."""
+    print(f"  ▸ {desc or ' '.join(str(part) for part in cmd[:4])}")
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"    ERROR: {result.stderr[:300]}")
         raise RuntimeError(f"Command failed: {cmd}")
@@ -45,21 +46,37 @@ def img_to_b64(path):
     mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png"}.get(ext, "jpeg")
     return f"data:image/{mime};base64,{data}"
 
+CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
+                'AVCHD', 'BDMV'}
+
+def output_path_is_unsafe(output_dir):
+    parts = [p.upper() for p in output_dir.resolve().parts]
+    if '01_FOOTAGE' in parts:
+        return True
+    for i, part in enumerate(parts):
+        # macOS temp paths resolve under /private/var; that is not a camera card.
+        if part == 'PRIVATE' and i == 1:
+            continue
+        if part in CARD_MARKERS:
+            return True
+    return False
+
 # ── 1. extract audio ─────────────────────────────────────────────────────────
 
 def extract_audio(video_path, work_dir):
     audio_path = work_dir / "audio.wav"
     run(
-        f'ffmpeg -y -i "{video_path}" -ac 1 -ar 16000 -vn "{audio_path}" 2>&1',
+        ['ffmpeg', '-y', '-i', str(video_path), '-ac', '1', '-ar', '16000',
+         '-vn', str(audio_path)],
         "Extracting audio"
     )
     return audio_path
 
 def get_duration(video_path):
     out = subprocess.run(
-        f'ffprobe -v quiet -show_entries format=duration '
-        f'-of default=noprint_wrappers=1:nokey=1 "{video_path}"',
-        shell=True, capture_output=True, text=True
+        ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
+         '-of', 'default=noprint_wrappers=1:nokey=1', str(video_path)],
+        capture_output=True, text=True
     )
     try:
         return float(out.stdout.strip())
@@ -135,8 +152,8 @@ def extract_frames(video_path, work_dir, interval=2):
     frames_dir = work_dir / "frames"
     frames_dir.mkdir(exist_ok=True)
     run(
-        f'ffmpeg -y -i "{video_path}" -vf "fps=1/{interval}" '
-        f'"{frames_dir}/frame_%06d.jpg" 2>&1',
+        ['ffmpeg', '-y', '-i', str(video_path), '-vf', f'fps=1/{interval}',
+         str(frames_dir / 'frame_%06d.jpg')],
         f"Extracting frames (every {interval}s)"
     )
     frames = sorted(frames_dir.glob("frame_*.jpg"))
@@ -230,6 +247,9 @@ SPEAKER_COLORS = [
     "#ce93d8", "#80cbc4", "#fff176", "#ff8a65",
 ]
 
+def esc(value):
+    return html_lib.escape(str(value), quote=True)
+
 def build_html(video_name, duration, segments, persons, labels, output_path):
     print("  ▸ Building HTML report...")
 
@@ -256,29 +276,33 @@ def build_html(video_name, duration, segments, persons, labels, output_path):
         sp = seg["speaker"] or ""
         color = speaker_color.get(sp, "#aaa")
         label = labels.get(sp, sp) if sp else ""
+        label_html = esc(label)
+        text_html = esc(seg['text'])
         ts = fmt_time(seg["start"])
         transcript_html += f"""
         <div class="seg" data-start="{seg['start']:.1f}">
           <span class="ts" onclick="copyTS('{ts}')" title="Copy timecode">{ts}</span>
-          {"f'<span class=\"spk\" style=\"color:{color}\">{label}</span>'" if label else ""}
-          <span class="txt">{seg['text']}</span>
+          {f'<span class="spk" style="color:{color}">{label_html}</span>' if label else ""}
+          <span class="txt">{text_html}</span>
         </div>"""
 
     # Build face cards HTML
     face_cards_html = ""
     for pid, p in sorted(persons.items()):
         name = labels.get(pid, p["label"])
+        name_html = esc(name)
+        pid_html = esc(pid)
         thumb = person_thumbs.get(pid, "")
         tc_list = " · ".join(fmt_time(t) for t in p["timecodes"][:12])
         if len(p["timecodes"]) > 12:
             tc_list += f" … +{len(p['timecodes']) - 12} more"
         screen_time = fmt_time(len(p["timecodes"]) * 2)  # approx
-        img_tag = f'<img src="{thumb}" alt="{name}">' if thumb else '<div class="no-thumb">?</div>'
+        img_tag = f'<img src="{thumb}" alt="{name_html}">' if thumb else '<div class="no-thumb">?</div>'
         face_cards_html += f"""
-        <div class="face-card" id="card-{pid}">
+        <div class="face-card" id="card-{pid_html}">
           <div class="face-thumb">{img_tag}</div>
           <div class="face-info">
-            <input class="face-name" value="{name}" data-pid="{pid}"
+            <input class="face-name" value="{name_html}" data-pid="{pid_html}"
                    onchange="updateLabel(this)" />
             <div class="face-time">~{screen_time} on screen · {p['count']} detections</div>
             <div class="face-tcs">{tc_list}</div>
@@ -289,6 +313,8 @@ def build_html(video_name, duration, segments, persons, labels, output_path):
     timeline_html = ""
     for pid, p in sorted(persons.items()):
         name = labels.get(pid, p["label"])
+        name_html = esc(name)
+        pid_html = esc(pid)
         color = SPEAKER_COLORS[list(persons.keys()).index(pid) % len(SPEAKER_COLORS)]
         blocks = ""
         for tc in p["timecodes"]:
@@ -296,7 +322,7 @@ def build_html(video_name, duration, segments, persons, labels, output_path):
             blocks += f'<div class="tl-block" style="left:{pct:.2f}%;width:0.8%" title="{fmt_time(tc)}"></div>'
         timeline_html += f"""
         <div class="tl-row">
-          <div class="tl-label" id="tl-{pid}">{name}</div>
+          <div class="tl-label" id="tl-{pid_html}">{name_html}</div>
           <div class="tl-track" style="--color:{color}">{blocks}</div>
         </div>"""
 
@@ -307,9 +333,10 @@ def build_html(video_name, duration, segments, persons, labels, output_path):
         pct = t / total_time * 100
         color = speaker_color.get(sp, "#aaa")
         name = labels.get(sp, sp)
+        name_html = esc(name)
         spk_bars_html += f"""
         <div class="spk-bar-row">
-          <div class="spk-bar-label" style="color:{color}">{name}</div>
+          <div class="spk-bar-label" style="color:{color}">{name_html}</div>
           <div class="spk-bar-track">
             <div class="spk-bar-fill" style="width:{pct:.1f}%;background:{color}"></div>
           </div>
@@ -319,13 +346,14 @@ def build_html(video_name, duration, segments, persons, labels, output_path):
     word_count = sum(len(s["text"].split()) for s in segments)
     n_speakers = len(all_speakers)
     n_faces = len(persons)
+    video_name_html = esc(video_name)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Footage Analysis — {video_name}</title>
+<title>Footage Analysis — {video_name_html}</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ background: #111; color: #e0e0e0; font-family: -apple-system, "Helvetica Neue", sans-serif;
@@ -399,7 +427,7 @@ def build_html(video_name, duration, segments, persons, labels, output_path):
 <body>
 
 <div class="header">
-  <h1>📹 {video_name}</h1>
+  <h1>📹 {video_name_html}</h1>
   <div class="stat"><strong>{fmt_time(duration)}</strong>Duration</div>
   <div class="stat"><strong>{word_count:,}</strong>Words</div>
   <div class="stat"><strong>{n_speakers}</strong>Speaker{'' if n_speakers==1 else 's'}</div>
@@ -510,21 +538,14 @@ def main():
     output_dir = Path(args.output)
 
     # SAFETY FENCE: outputs must never land inside footage or card structures.
-    # This script writes (and later removes) a _work/ temp dir and runs ffmpeg
-    # with -y; pointing it at camera originals must be impossible.
-    CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
-                    'AVCHD', 'BDMV'}
-    out_parts = {p.upper() for p in output_dir.resolve().parts}
-    if out_parts & CARD_MARKERS or '01_FOOTAGE' in out_parts:
+    # This script writes a run-specific temp dir and runs ffmpeg with -y;
+    # pointing it at camera originals must be impossible.
+    if output_path_is_unsafe(output_dir):
         print("❌ Refusing: --output points inside a footage/card folder "
               f"({args.output}).")
         print("   Choose an output OUTSIDE your footage — e.g. the project's "
               "09_exports/ folder or a separate analysis folder.")
         sys.exit(2)
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    work_dir = output_dir / "_work"
-    work_dir.mkdir(exist_ok=True)
 
     labels = json.loads(args.labels)
     video_name = video_path.name
@@ -532,39 +553,41 @@ def main():
 
     print(f"\n🎬 Analyzing: {video_name} ({fmt_time(duration)})\n")
 
-    # 1. Audio extraction + transcription
-    print("── Transcription ──────────────────────────────")
-    audio_path = extract_audio(video_path, work_dir)
-    segments = transcribe(audio_path, args.whisper_model)
-    print(f"  ✓ {len(segments)} segments, ~{sum(len(s['text'].split()) for s in segments):,} words")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    work_dir = Path(tempfile.mkdtemp(prefix="_work-", dir=output_dir))
+    try:
+        # 1. Audio extraction + transcription
+        print("── Transcription ──────────────────────────────")
+        audio_path = extract_audio(video_path, work_dir)
+        segments = transcribe(audio_path, args.whisper_model)
+        print(f"  ✓ {len(segments)} segments, ~{sum(len(s['text'].split()) for s in segments):,} words")
 
-    # 2. Speaker diarization
-    print("\n── Speaker diarization ────────────────────────")
-    if args.hf_token:
-        turns = diarize(audio_path, args.hf_token)
-        segments = assign_speakers(segments, turns)
-        n_speakers = len(set(t["speaker"] for t in turns))
-        print(f"  ✓ {n_speakers} speaker(s) detected")
-    else:
-        print("  ℹ  No HF token provided — skipping diarization")
+        # 2. Speaker diarization
+        print("\n── Speaker diarization ────────────────────────")
+        if args.hf_token:
+            turns = diarize(audio_path, args.hf_token)
+            segments = assign_speakers(segments, turns)
+            n_speakers = len(set(t["speaker"] for t in turns))
+            print(f"  ✓ {n_speakers} speaker(s) detected")
+        else:
+            print("  ℹ  No HF token provided — skipping diarization")
 
-    # 3. Face analysis
-    print("\n── Face detection & clustering ────────────────")
-    frames, frames_dir = extract_frames(video_path, work_dir, args.frame_interval)
-    print(f"  ✓ {len(frames)} frames extracted")
-    persons, _ = detect_and_cluster_faces(frames, args.frame_interval, args.face_threshold)
+        # 3. Face analysis
+        print("\n── Face detection & clustering ────────────────")
+        frames, frames_dir = extract_frames(video_path, work_dir, args.frame_interval)
+        print(f"  ✓ {len(frames)} frames extracted")
+        persons, _ = detect_and_cluster_faces(frames, args.frame_interval, args.face_threshold)
 
-    # 4. Save transcript JSON (for reference)
-    with open(output_dir / "transcript.json", "w") as f:
-        json.dump(segments, f, indent=2)
+        # 4. Save transcript JSON (for reference)
+        with open(output_dir / "transcript.json", "w") as f:
+            json.dump(segments, f, indent=2)
 
-    # 5. Generate HTML
-    print("\n── Generating HTML report ─────────────────────")
-    html_path = output_dir / "report.html"
-    build_html(video_name, duration, segments, persons, labels, html_path)
-
-    # Clean up work dir
-    shutil.rmtree(work_dir, ignore_errors=True)
+        # 5. Generate HTML
+        print("\n── Generating HTML report ─────────────────────")
+        html_path = output_dir / "report.html"
+        build_html(video_name, duration, segments, persons, labels, html_path)
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
     print(f"\n✅ Done!\n")
     print(f"   HTML report:  {html_path}")

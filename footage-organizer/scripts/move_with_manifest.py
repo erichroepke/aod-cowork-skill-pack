@@ -5,7 +5,7 @@ move_with_manifest.py — the Safe Move Protocol executor for footage-organizer.
 Guarantees, enforced in code:
   * NEVER deletes anything. There is no deletion code in this file.
   * NEVER overwrites: a move whose destination exists is refused. No force flag.
-    The destination is re-checked immediately before every rename (no race window).
+    The destination is re-checked immediately before every rename/copy action.
   * Same-drive moves are RENAMES (data never rewritten).
   * Cross-drive moves are COPY + VERIFY; the source is always left in place.
   * Every file is hashed before and after, compared path-by-path; any mismatch
@@ -116,6 +116,13 @@ def append_manifest(manifest_path: Path, record: dict):
         f.write(json.dumps(record) + '\n')
 
 
+def copy_file_no_overwrite(src: Path, dst: Path):
+    """Copy bytes to a new file only. Opening with xb makes the final path exclusive."""
+    with open(src, 'rb') as in_f, open(dst, 'xb') as out_f:
+        shutil.copyfileobj(in_f, out_f, length=8 * 1024 * 1024)
+    shutil.copystat(src, dst, follow_symlinks=False)
+
+
 def decide_mode(src: Path, dst: Path) -> str:
     """rename (same volume) vs copy (cross volume). Unknown → copy (safer)."""
     probe = dst.parent
@@ -182,10 +189,14 @@ def execute(plan, manifest_path: Path, dry_run: bool):
                 'session': session, 'mode': mode, 'src': str(src), 'dst': str(dst),
                 'status': 'copy_started', 'ts': time.strftime('%Y-%m-%dT%H:%M:%S')})
             try:
+                if dst.exists():
+                    print(f"\n🔴 {dst} appeared since validation — refusing to overwrite. "
+                          f"Run aborted; earlier moves stand and are in the undo log.")
+                    sys.exit(2)
                 if src.is_dir():
                     shutil.copytree(src, dst)   # copy only — source untouched
                 else:
-                    shutil.copy2(src, dst)      # copy only — source untouched
+                    copy_file_no_overwrite(src, dst)  # copy only — source untouched
             except (OSError, shutil.Error) as e:
                 append_manifest(manifest_path, {
                     'session': session, 'mode': mode, 'src': str(src), 'dst': str(dst),

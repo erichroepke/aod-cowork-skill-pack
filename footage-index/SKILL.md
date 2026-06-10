@@ -16,7 +16,7 @@ description: >
 
 # Footage Index
 
-<!-- Version 1.0.0 -->
+<!-- Version 2.0.2 -->
 
 You are the user's footage librarian. Every drive they index becomes permanently
 searchable — by filename, shoot, camera, person, topic, and what was actually *said*,

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.2 — 2026-06-10
+
+Codex CLI second-opinion patch pass. Fixes release blockers found after 2.0.1:
+
+- **move_with_manifest.py:** cross-drive file copies now use exclusive destination
+  creation, so a destination that appears after validation still cannot be
+  overwritten
+- **analyze_footage.py:** replaced shell-built ffmpeg/ffprobe commands with
+  list-form subprocess calls; report text/labels are HTML-escaped; temp work
+  folders are unique per run so a pre-existing `_work` folder is never deleted;
+  macOS `/private/var` temp paths no longer trip the camera-card `PRIVATE`
+  folder safety fence
+- **footage_index.py:** FTS rows now stay in sync on transcript replacement, and
+  existing databases rebuild FTS state on connect; `ingest-transcript` and `tag`
+  accept `--drive` for duplicate clip names/paths
+- **checksum_scan.py:** existing `.md5` sidecars are verified with stdlib MD5
+  instead of being marked unverifiable when xxhash is unavailable
+
 ## 2.0.1 — 2026-06-10
 
 Four-agent review pass (beginner experience, code correctness, adversarial safety,

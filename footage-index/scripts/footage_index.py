@@ -13,8 +13,10 @@ Subcommands:
     init                                          create/verify the database
     ingest-path  --path DIR --drive NAME          walk a folder, index media files
                  [--checksums _checksums.json]    attach hashes from checksum_scan.py
-    ingest-transcript --file-path CLIP --json T   attach timecoded segments to a clip
-    tag          --file-path CLIP --kind person|topic --value X [--t-start S --t-end E]
+    ingest-transcript --file-path CLIP --json T [--drive NAME]
+                                                  attach timecoded segments to a clip
+    tag          --file-path CLIP [--drive NAME] --kind person|topic --value X
+                 [--t-start S --t-end E]
     search       --terms "a,b,c" [--person X] [--topic Y] [--limit N]
     stats
     export-library --out library.json             full dump for the HTML library page
@@ -77,6 +79,15 @@ CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
 CREATE TRIGGER IF NOT EXISTS segments_ai AFTER INSERT ON segments BEGIN
     INSERT INTO segments_fts(rowid, text) VALUES (new.id, new.text);
 END;
+CREATE TRIGGER IF NOT EXISTS segments_ad AFTER DELETE ON segments BEGIN
+    INSERT INTO segments_fts(segments_fts, rowid, text)
+    VALUES('delete', old.id, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS segments_au AFTER UPDATE ON segments BEGIN
+    INSERT INTO segments_fts(segments_fts, rowid, text)
+    VALUES('delete', old.id, old.text);
+    INSERT INTO segments_fts(rowid, text) VALUES (new.id, new.text);
+END;
 """
 
 
@@ -85,6 +96,9 @@ def connect(db_path):
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(db_path)
     con.executescript(SCHEMA)
+    # Repair older databases that were created before delete/update triggers.
+    con.execute("INSERT INTO segments_fts(segments_fts) VALUES('rebuild')")
+    con.commit()
     return con
 
 
@@ -164,12 +178,17 @@ def cmd_ingest_path(con, args):
     print(f"✅ Drive '{drive}': {added} files added, {updated} updated.")
 
 
-def find_file(con, file_path):
-    """Locate a file row by absolute path suffix or name."""
+def find_file(con, file_path, drive=None):
+    """Locate a file row by drive plus absolute path suffix or name."""
     name = Path(file_path).name
+    params = [name]
+    drive_filter = ''
+    if drive:
+        drive_filter = ' AND d.name=?'
+        params.append(drive)
     rows = con.execute(
         "SELECT f.id, d.name, f.path FROM files f JOIN drives d ON d.id=f.drive_id "
-        "WHERE f.name=?", (name,)).fetchall()
+        f"WHERE f.name=?{drive_filter}", params).fetchall()
     if not rows:
         return None
     if len(rows) > 1:
@@ -190,13 +209,13 @@ def find_file(con, file_path):
         rows.sort(key=suffix_score, reverse=True)
         if suffix_score(rows[0]) == suffix_score(rows[1]):
             print(f"⚠️  Ambiguous: '{name}' exists at the same relative path on "
-                  f"multiple drives — using [{rows[0][1]}]. Pass a fuller path "
-                  f"to target a different drive.")
+                  f"multiple drives — using [{rows[0][1]}]. Pass --drive with "
+                  f"the indexed drive name to target a different drive.")
     return rows[0][0]
 
 
 def cmd_ingest_transcript(con, args):
-    fid = find_file(con, args.file_path)
+    fid = find_file(con, args.file_path, args.drive)
     if fid is None:
         sys.exit(f"ERROR: file not in index (ingest its drive first): {args.file_path}")
     data = json.loads(Path(args.json).read_text(encoding='utf-8'))
@@ -215,7 +234,7 @@ def cmd_ingest_transcript(con, args):
 
 
 def cmd_tag(con, args):
-    fid = find_file(con, args.file_path)
+    fid = find_file(con, args.file_path, args.drive)
     if fid is None:
         sys.exit(f"ERROR: file not in index: {args.file_path}")
     con.execute("INSERT INTO tags(file_id,t_start,t_end,kind,value) VALUES(?,?,?,?,?)",
@@ -359,8 +378,10 @@ def main():
     p = sub.add_parser('ingest-transcript')
     p.add_argument('--file-path', required=True)
     p.add_argument('--json', required=True)
+    p.add_argument('--drive', default=None, help='indexed drive name when clip paths repeat')
     p = sub.add_parser('tag')
     p.add_argument('--file-path', required=True)
+    p.add_argument('--drive', default=None, help='indexed drive name when clip paths repeat')
     p.add_argument('--kind', required=True, choices=['person', 'topic'])
     p.add_argument('--value', required=True)
     p.add_argument('--t-start', type=float, default=None)
