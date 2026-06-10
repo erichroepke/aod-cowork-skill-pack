@@ -5,9 +5,13 @@ move_with_manifest.py — the Safe Move Protocol executor for footage-organizer.
 Guarantees, enforced in code:
   * NEVER deletes anything. There is no deletion code in this file.
   * NEVER overwrites: a move whose destination exists is refused. No force flag.
+    The destination is re-checked immediately before every rename (no race window).
   * Same-drive moves are RENAMES (data never rewritten).
   * Cross-drive moves are COPY + VERIFY; the source is always left in place.
-  * Every file is hashed before and after; any mismatch aborts the run.
+  * Every file is hashed before and after, compared path-by-path; any mismatch
+    aborts the run.
+  * Symlinks, duplicate sources, nested entries, and self-targets are refused
+    at validation — before anything moves.
   * Every executed move is appended to a JSONL manifest; renames are undoable.
 
 Usage:
@@ -20,6 +24,7 @@ Plan format (JSON list):
 """
 
 import argparse
+import errno
 import json
 import os
 import shutil
@@ -44,40 +49,86 @@ def hash_file(path):
     return h.hexdigest(), algo
 
 
-def files_under(path: Path):
-    """All regular files for hashing: the file itself, or every file in a dir."""
-    if path.is_file():
-        return [path]
-    return sorted(p for p in path.rglob('*') if p.is_file())
-
-
-def same_volume(src: Path, dst_parent: Path) -> bool:
-    return src.stat().st_dev == dst_parent.stat().st_dev
+def hash_tree(base: Path):
+    """{relative_path: digest} for a file or every file under a directory.
+    Path-keyed so swapped-content corruption cannot hide in a multiset."""
+    if base.is_file():
+        digest, algo = hash_file(base)
+        return {'.': digest}, algo
+    out = {}
+    algo = 'xxh64'
+    for p in sorted(base.rglob('*')):
+        if p.is_file():
+            digest, algo = hash_file(p)
+            out[str(p.relative_to(base))] = digest
+    return out, algo
 
 
 def validate(plan):
     """Validate every entry before anything runs. All-or-nothing."""
     errors = []
-    seen_dst = set()
+    seen_dst, seen_src = set(), set()
+    resolved = []
     for i, entry in enumerate(plan):
         src = Path(entry['src']).expanduser()
         dst = Path(entry['dst']).expanduser()
         tag = f"  [{i+1}] {src} → {dst}"
         if not src.exists():
             errors.append(f"{tag}\n      source does not exist")
+            continue
+        if src.is_symlink():
+            errors.append(f"{tag}\n      source is a symlink — refusing (the link target "
+                          f"would not move; plan the real file instead)")
         if dst.exists():
-            errors.append(f"{tag}\n      DESTINATION ALREADY EXISTS — refusing (no overwrites, ever)")
-        if str(dst) in seen_dst:
+            try:
+                if src.resolve() == dst.resolve():
+                    errors.append(f"{tag}\n      this is a case-only rename on a "
+                                  f"case-insensitive drive — not supported; pick a "
+                                  f"name that differs by more than letter case")
+                    continue
+            except OSError:
+                pass
+            errors.append(f"{tag}\n      DESTINATION ALREADY EXISTS — refusing "
+                          f"(no overwrites, ever)")
+        s, d = str(src.resolve()), str(dst)
+        if s in seen_src:
+            errors.append(f"{tag}\n      duplicate source in plan")
+        if d in seen_dst:
             errors.append(f"{tag}\n      duplicate destination in plan")
-        seen_dst.add(str(dst))
+        seen_src.add(s)
+        seen_dst.add(d)
         if src.is_dir() and str(dst.resolve()).startswith(str(src.resolve()) + os.sep):
             errors.append(f"{tag}\n      destination is inside the source folder")
+        resolved.append((i, s))
+    # nested entries: one entry moving a folder that contains another entry's source
+    for i, s_i in resolved:
+        for j, s_j in resolved:
+            if i != j and s_j.startswith(s_i + os.sep):
+                errors.append(f"  [{i+1}] and [{j+1}]: entry {j+1}'s source is INSIDE "
+                              f"entry {i+1}'s folder — merge them into the folder move, "
+                              f"or move the file first")
+                break
     return errors
 
 
 def append_manifest(manifest_path: Path, record: dict):
     with open(manifest_path, 'a') as f:
         f.write(json.dumps(record) + '\n')
+
+
+def decide_mode(src: Path, dst: Path) -> str:
+    """rename (same volume) vs copy (cross volume). Unknown → copy (safer)."""
+    probe = dst.parent
+    while not probe.exists():
+        parent = probe.parent
+        if parent == probe:          # reached filesystem root without a hit
+            return 'copy_verify_source_retained'
+        probe = parent
+    try:
+        return ('rename' if src.stat().st_dev == probe.stat().st_dev
+                else 'copy_verify_source_retained')
+    except OSError:
+        return 'copy_verify_source_retained'
 
 
 def execute(plan, manifest_path: Path, dry_run: bool):
@@ -93,12 +144,7 @@ def execute(plan, manifest_path: Path, dry_run: bool):
     for entry in plan:
         src = Path(entry['src']).expanduser()
         dst = Path(entry['dst']).expanduser()
-        dst_parent = dst.parent
-        # Determine mode now (dst_parent may not exist yet — walk up to nearest existing)
-        probe = dst_parent
-        while not probe.exists():
-            probe = probe.parent
-        mode = 'rename' if same_volume(src, probe) else 'copy_verify_source_retained'
+        mode = decide_mode(src, dst)
         moves.append((src, dst, mode))
         print(f"  {'[DRY] ' if dry_run else ''}{mode:<28} {src}\n"
               f"  {'':>34}→ {dst}")
@@ -112,46 +158,71 @@ def execute(plan, manifest_path: Path, dry_run: bool):
     verified_files = 0
 
     for src, dst, mode in moves:
-        # 1) hash everything at the source
-        src_files = files_under(src)
-        before = {}
-        for f in src_files:
-            digest, algo = hash_file(f)
-            before[str(f.relative_to(src.parent))] = digest
+        # 1) hash everything at the source (path-keyed)
+        before, algo = hash_tree(src)
 
         # 2) execute
         dst.parent.mkdir(parents=True, exist_ok=True)
         if mode == 'rename':
-            os.rename(src, dst)
-        else:
-            if src.is_dir():
-                shutil.copytree(src, dst)   # copy only — source untouched
-            else:
-                shutil.copy2(src, dst)      # copy only — source untouched
+            if dst.exists():     # re-check at the moment of action — no race window
+                print(f"\n🔴 {dst} appeared since validation — refusing to overwrite. "
+                      f"Run aborted; earlier moves stand and are in the undo log.")
+                sys.exit(2)
+            try:
+                os.rename(src, dst)
+            except OSError as e:
+                if e.errno == errno.EXDEV:   # actually cross-volume — fall back to copy
+                    mode = 'copy_verify_source_retained'
+                else:
+                    print(f"\n🔴 Could not move {src}: {e}\n   Run aborted; earlier "
+                          f"moves stand and are in the undo log.")
+                    sys.exit(3)
+        if mode != 'rename':
+            append_manifest(manifest_path, {
+                'session': session, 'mode': mode, 'src': str(src), 'dst': str(dst),
+                'status': 'copy_started', 'ts': time.strftime('%Y-%m-%dT%H:%M:%S')})
+            try:
+                if src.is_dir():
+                    shutil.copytree(src, dst)   # copy only — source untouched
+                else:
+                    shutil.copy2(src, dst)      # copy only — source untouched
+            except (OSError, shutil.Error) as e:
+                append_manifest(manifest_path, {
+                    'session': session, 'mode': mode, 'src': str(src), 'dst': str(dst),
+                    'status': 'copy_failed', 'error': str(e),
+                    'ts': time.strftime('%Y-%m-%dT%H:%M:%S')})
+                print(f"\n🔴 Copy failed partway: {e}")
+                print(f"   Your ORIGINAL is untouched at: {src}")
+                print(f"   An INCOMPLETE copy may exist at: {dst}")
+                print(f"   Move that incomplete copy to the Trash yourself, then re-run.")
+                print(f"   (This tool never deletes anything, including failed copies.)")
+                sys.exit(3)
 
-        # 3) re-hash at destination and compare (count + multiset of hashes)
-        dst_files = files_under(dst)
-        after = [hash_file(f) for f in dst_files]
-        algo = after[0][1] if after else 'xxh64'
-        before_hashes = sorted(before.values())
-        after_hashes = sorted(digest for digest, _ in after)
-        if len(before_hashes) != len(after_hashes) or before_hashes != after_hashes:
+        # 3) re-hash at destination and compare path-by-path
+        after, _ = hash_tree(dst)
+        if before != after:
+            missing = sorted(set(before) - set(after))
+            changed = sorted(k for k in before if k in after and before[k] != after[k])
             print(f"\n🔴 CHECKSUM MISMATCH after moving {src} → {dst}")
+            if missing:
+                print(f"   missing at destination: {missing[:5]}")
+            if changed:
+                print(f"   content changed: {changed[:5]}")
             print("   Run aborted. Nothing further will move. Investigate before continuing.")
             append_manifest(manifest_path, {
                 'session': session, 'mode': mode, 'src': str(src), 'dst': str(dst),
-                'files': len(before_hashes), 'verified': False,
+                'files': len(before), 'verified': False,
                 'ts': time.strftime('%Y-%m-%dT%H:%M:%S')})
             sys.exit(3)
 
-        verified_files += len(after_hashes)
+        verified_files += len(after)
         moved += 1
         append_manifest(manifest_path, {
             'session': session, 'mode': mode, 'src': str(src), 'dst': str(dst),
-            'files': len(after_hashes), 'algo': algo, 'verified': True,
+            'files': len(after), 'algo': algo, 'verified': True,
             'hashes': before, 'ts': time.strftime('%Y-%m-%dT%H:%M:%S')})
         note = '' if mode == 'rename' else '  (source left in place — delete it yourself after verifying)'
-        print(f"  ✅ verified {len(after_hashes)} file(s){note}")
+        print(f"  ✅ verified {len(after)} file(s){note}")
 
     print(f"\n{'='*60}")
     print(f"  START AND FINISH ARE THE SAME")
@@ -164,13 +235,15 @@ def undo(manifest_path: Path):
     if not manifest_path.exists():
         print(f"No manifest found at {manifest_path}")
         sys.exit(1)
-    records = [json.loads(line) for line in manifest_path.read_text().splitlines() if line.strip()]
-    renames = [r for r in records if r['mode'] == 'rename' and r.get('verified')]
-    copies = [r for r in records if r['mode'] != 'rename']
+    records = [json.loads(line) for line in
+               manifest_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+    renames = [r for r in records if r.get('mode') == 'rename' and r.get('verified')]
+    copies = [r for r in records if r.get('mode', '').startswith('copy')]
 
     if copies:
-        print(f"ℹ️  {len(copies)} cross-drive copies are not undone (we never delete copies);")
-        print("    their sources were never touched, so there is nothing to restore.\n")
+        print(f"ℹ️  {len(copies)} cross-drive copy record(s) are not undone (we never "
+              f"delete copies);\n    their sources were never touched, so there is "
+              f"nothing to restore.\n")
 
     if not renames:
         print("No renames to undo.")
@@ -218,7 +291,7 @@ def main():
         sys.exit(1)
 
     plan_path = Path(args.plan).expanduser()
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(plan_path.read_text(encoding='utf-8'))
     manifest = Path(args.manifest).expanduser() if args.manifest \
         else plan_path.parent / '_move_manifest.jsonl'
     execute(plan, manifest, args.dry_run)

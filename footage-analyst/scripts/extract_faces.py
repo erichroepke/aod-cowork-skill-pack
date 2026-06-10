@@ -210,6 +210,15 @@ def main():
         sys.exit(1)
 
     out_dir = Path(args.output)
+    # SAFETY FENCE: never write analysis output inside footage/card folders
+    CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
+                    'AVCHD', 'BDMV'}
+    out_parts = {p.upper() for p in out_dir.resolve().parts}
+    if out_parts & CARD_MARKERS or '01_FOOTAGE' in out_parts:
+        print(f"❌ Refusing: --output points inside a footage/card folder ({args.output}).")
+        print("   Choose an output OUTSIDE your footage — e.g. 09_exports/ or a "
+              "separate analysis folder.")
+        sys.exit(2)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n🎬 Footage Analyst — Phase 1: Face Extraction")

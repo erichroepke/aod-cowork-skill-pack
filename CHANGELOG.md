@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.0.1 — 2026-06-10
+
+Four-agent review pass (beginner experience, code correctness, adversarial safety,
+consistency). Fixes:
+
+- **move_with_manifest.py hardened:** path-keyed before/after hash comparison
+  (catches swapped-content corruption), symlink/duplicate-source/nested-entry
+  rejection at validation, destination re-checked at the moment of every rename
+  (no race window), EXDEV fallback to copy, unknown-volume cases default to the
+  safer copy mode, failed cross-drive copies leave a manifest record and
+  plain-English recovery steps, case-only renames get a clear explanation
+- **checksum_scan.py:** sidecars of a different algorithm now report 🟠
+  "unverifiable" instead of false corruption alarms or silent replacement;
+  empty-folder scan no longer crashes
+- **footage_index.py:** accepts whisper/mlx-whisper `{"segments": [...]}` JSON
+  directly; same-name clips on multiple drives disambiguate by path components
+  (with a warning when truly ambiguous); FTS5 quote escaping; `--topic` filter
+  actually works
+- **analyst scripts:** refuse `--output` inside `01_footage/` or any card folder
+- **SKILL.mds:** folder renames classified as moves (no freehand `mv` loophole),
+  backup-gate trust doesn't relax checksums, plain-English narration rules
+  (no scary flags shown to users), HuggingFace explained in human terms,
+  `.xxh64` naming unified
+- **README:** rewritten install steps with checkpoints and fallbacks, warmer
+  safety section, undo explained, install-time expectations set
+- **Added LICENSE** (MIT — was declared but missing)
+
 ## 2.0.0 — 2026-06-10
 
 The pack release. Two skills become three, and the organizer learns to act.

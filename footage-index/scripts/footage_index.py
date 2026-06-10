@@ -173,10 +173,25 @@ def find_file(con, file_path):
     if not rows:
         return None
     if len(rows) > 1:
-        # disambiguate by longest matching path suffix
-        fp = str(Path(file_path))
-        rows.sort(key=lambda r: len(os.path.commonprefix([fp[::-1], r[2][::-1]])),
-                  reverse=True)
+        # disambiguate by how many trailing PATH COMPONENTS match (not raw
+        # characters — "footage/A001.MOV" vs "backup-footage/A001.MOV" must
+        # score differently against ".../footage/A001.MOV")
+        want = Path(file_path).parts
+
+        def suffix_score(row):
+            have = Path(row[2]).parts
+            n = 0
+            for a, b in zip(reversed(want), reversed(have)):
+                if a != b:
+                    break
+                n += 1
+            return n
+
+        rows.sort(key=suffix_score, reverse=True)
+        if suffix_score(rows[0]) == suffix_score(rows[1]):
+            print(f"⚠️  Ambiguous: '{name}' exists at the same relative path on "
+                  f"multiple drives — using [{rows[0][1]}]. Pass a fuller path "
+                  f"to target a different drive.")
     return rows[0][0]
 
 
@@ -184,7 +199,10 @@ def cmd_ingest_transcript(con, args):
     fid = find_file(con, args.file_path)
     if fid is None:
         sys.exit(f"ERROR: file not in index (ingest its drive first): {args.file_path}")
-    segs = json.loads(Path(args.json).read_text())
+    data = json.loads(Path(args.json).read_text(encoding='utf-8'))
+    # Accept both a bare segment list (analyze_footage.py) and the
+    # {"segments": [...]} object that whisper/mlx-whisper write.
+    segs = data['segments'] if isinstance(data, dict) else data
     cur = con.cursor()
     cur.execute("DELETE FROM segments WHERE file_id=?", (fid,))  # replace, own-DB only
     for s in segs:
@@ -211,7 +229,8 @@ def cmd_search(con, args):
     results = []
 
     if terms:
-        match = ' OR '.join(f'"{t}"' for t in terms)
+        # FTS5 phrase quoting; embedded double-quotes are escaped by doubling
+        match = ' OR '.join('"{}"'.format(t.replace('"', '""')) for t in terms)
         q = """SELECT d.name, f.path, f.name, s.t_start, s.t_end, s.speaker,
                       snippet(segments_fts, 0, '>>', '<<', '…', 12), f.shoot, f.shoot_date
                FROM segments_fts
@@ -249,6 +268,16 @@ def cmd_search(con, args):
                    WHERE t.kind='person' AND t.value LIKE ? LIMIT ?""",
                 (f'%{args.person}%', args.limit)):
             results.append(('person', r))
+
+    if args.topic:
+        for r in con.execute(
+                """SELECT d.name, f.path, f.name, t.t_start, t.t_end, t.value,
+                          'topic', f.shoot, f.shoot_date
+                   FROM tags t JOIN files f ON f.id=t.file_id
+                   JOIN drives d ON d.id=f.drive_id
+                   WHERE t.kind='topic' AND t.value LIKE ? LIMIT ?""",
+                (f'%{args.topic}%', args.limit)):
+            results.append(('topic', r))
 
     if not results:
         print("No matches. Try broader terms — or this footage may not be transcribed yet "

@@ -508,6 +508,20 @@ def main():
 
     video_path = Path(args.input)
     output_dir = Path(args.output)
+
+    # SAFETY FENCE: outputs must never land inside footage or card structures.
+    # This script writes (and later removes) a _work/ temp dir and runs ffmpeg
+    # with -y; pointing it at camera originals must be impossible.
+    CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
+                    'AVCHD', 'BDMV'}
+    out_parts = {p.upper() for p in output_dir.resolve().parts}
+    if out_parts & CARD_MARKERS or '01_FOOTAGE' in out_parts:
+        print("❌ Refusing: --output points inside a footage/card folder "
+              f"({args.output}).")
+        print("   Choose an output OUTSIDE your footage — e.g. the project's "
+              "09_exports/ folder or a separate analysis folder.")
+        sys.exit(2)
+
     output_dir.mkdir(parents=True, exist_ok=True)
     work_dir = output_dir / "_work"
     work_dir.mkdir(exist_ok=True)

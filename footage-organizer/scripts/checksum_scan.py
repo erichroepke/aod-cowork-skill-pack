@@ -9,7 +9,7 @@ Usage:
 
 Output:
     - Prints a checksum report to stdout
-    - Optionally writes .xxhash sidecar files alongside each media file
+    - Optionally writes .xxh64 sidecar files alongside each media file
     - Optionally saves results as JSON for the HTML report
 """
 
@@ -52,16 +52,14 @@ def sidecar_path(file_path, algo):
     return Path(str(file_path) + f'.{algo}')
 
 
-def read_sidecar(file_path, algo):
-    """Read existing sidecar checksum if it exists."""
-    sp = sidecar_path(file_path, algo)
-    if sp.exists():
-        return sp.read_text().strip().split()[0]
-    # Also check legacy .md5 if algo is xxh64
-    if algo == 'xxh64':
-        md5_sp = Path(str(file_path) + '.md5')
-        if md5_sp.exists():
-            return md5_sp.read_text().strip().split()[0], 'md5'
+def read_sidecar(file_path):
+    """Return (hash, algo) from an existing sidecar, or None.
+    Always reports which algorithm the sidecar was written with, so the
+    caller never compares hashes from two different algorithms."""
+    for ext, algo in (('.xxh64', 'xxh64'), ('.xxhash', 'xxh64'), ('.md5', 'md5')):
+        sp = Path(str(file_path) + ext)
+        if sp.exists():
+            return sp.read_text().strip().split()[0], algo
     return None
 
 
@@ -103,22 +101,21 @@ def scan(root_path, write_sidecars=False):
         elapsed = time.time() - t0
         speed = size / elapsed / (1024**2) if elapsed > 0 else 0
 
-        # Check for existing sidecar
-        existing = read_sidecar(fpath, algo)
-        if isinstance(existing, tuple):
+        # Check for existing sidecar — only compare hashes of the SAME algorithm
+        existing = read_sidecar(fpath)
+        if existing is None:
+            existing_hash = None
+            status, icon = 'no_sidecar', '⚪'
+        else:
             existing_hash, existing_algo = existing
-        else:
-            existing_hash, existing_algo = existing, algo
-
-        if existing_hash is None:
-            status = 'no_sidecar'
-            icon = '⚪'
-        elif existing_hash.lower() == computed.lower():
-            status = 'verified'
-            icon = '✅'
-        else:
-            status = 'mismatch'
-            icon = '🔴'
+            if existing_algo != algo:
+                # A sidecar exists but this machine computes a different algorithm.
+                # NOT verified, NOT assumed corrupt — and never silently replaced.
+                status, icon = 'sidecar_unverifiable', '🟠'
+            elif existing_hash.lower() == computed.lower():
+                status, icon = 'verified', '✅'
+            else:
+                status, icon = 'mismatch', '🔴'
 
         print(f"{icon} {computed[:12]}... [{algo}] {speed:.0f} MB/s")
 
@@ -143,6 +140,7 @@ def scan(root_path, write_sidecars=False):
     verified = sum(1 for r in results if r['status'] == 'verified')
     mismatches = [r for r in results if r['status'] == 'mismatch']
     no_sidecar = sum(1 for r in results if r['status'] == 'no_sidecar')
+    unverifiable = sum(1 for r in results if r['status'] == 'sidecar_unverifiable')
     total_size = sum(r['size'] for r in results)
 
     print(f"\n{'='*60}")
@@ -151,6 +149,11 @@ def scan(root_path, write_sidecars=False):
     print(f"  ✅ Verified:    {verified}")
     print(f"  ⚪ No sidecar:  {no_sidecar}")
     print(f"  🔴 Mismatches:  {len(mismatches)}")
+    if unverifiable:
+        print(f"  🟠 Unverifiable: {unverifiable} — sidecars exist but use a different "
+              f"algorithm than this machine computes.")
+        print(f"     Install xxhash (pip3 install xxhash) to verify them. These files "
+              f"were NOT checked and NOT modified.")
 
     if mismatches:
         print(f"\n  ⚠️  CORRUPTION WARNINGS:")
@@ -159,7 +162,7 @@ def scan(root_path, write_sidecars=False):
             print(f"      Expected: {r['existing']}")
             print(f"      Got:      {r['computed']}")
 
-    if no_sidecar > 0 and not write_sidecars:
+    if no_sidecar > 0 and not write_sidecars and results:
         print(f"\n  💡 Run with --write-sidecars to create .{results[0]['algo']} sidecar files")
 
     print()

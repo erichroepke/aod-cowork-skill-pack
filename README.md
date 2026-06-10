@@ -4,7 +4,7 @@
 
 | Skill | What it does | What you say |
 |-------|--------------|--------------|
-| 🗂 **footage-organizer** | Audits your drive against a professional folder structure, then — with your approval — safely moves footage into place. Checksum-verified, undo log, physically incapable of deleting. | *"Check my footage folder"* · *"Organize this drive"* |
+| 🗂 **footage-organizer** | Audits your drive against a professional folder structure, then — with your approval — safely moves footage into place. Every move is verified with a digital fingerprint, everything is undoable, and deleting is impossible. | *"Check my footage folder"* · *"Organize this drive"* |
 | 🔎 **footage-index** | A searchable memory of every drive you've ever scanned. Ask for a moment, get the drive, file, and timecode — even if that drive is on a shelf. | *"Where's the interview where she talks about her father?"* |
 | 🎞 **footage-analyst** | Transcribes footage, identifies who's on screen (you label the faces), breaks down speakers, makes a beautiful HTML report. | *"Transcribe this clip"* · *"Who's in this video?"* |
 
@@ -16,38 +16,52 @@ Everything runs **on your computer**. No footage is ever uploaded anywhere.
 
 These skills work with camera originals — possibly the only copy of irreplaceable
 material. They are built around one rule: **they cannot delete your files.** The
-organizer only *moves* footage, only after you approve a plan, only after you confirm
-a backup exists, and it verifies every file with checksums before and after (the same
-xxHash64 verification used by Hedge and OffShoot). Every move is logged and undoable.
+organizer only *moves* footage, only after you approve a plan, and only after you
+confirm a backup exists. Before and after every move it checks each file's digital
+fingerprint — the same kind of verification professional offload tools use — to prove
+nothing changed in transit. If you ever change your mind, just say **"undo the
+organizer's moves"** and Claude reverses everything automatically.
 
-That said: **you are responsible for keeping a backup of your footage.** No warranty.
-Rule one of media management — never work on the only copy.
+One important thing from us: **always keep a backup of your footage before organizing
+— never work on the only copy.** The skill enforces this (it asks about your backup
+before moving a single file), but you're the one responsible for protecting your
+material. That's true of any tool that touches camera originals, this one included —
+it's provided free, as-is.
 
 ---
 
 ## Install (first time, ~2 minutes)
 
-You need the **Claude desktop app** with Cowork. That's it — no other software.
+You need the **Claude desktop app** (the one with Cowork). That's it — no other
+software, and you will never need to open Terminal.
 
-1. Go to this repo's **[Releases page](../../releases)** (link also in your AOD course
-   materials)
-2. Download the skill files — they look like `footage-organizer.skill`
-3. **Double-click the downloaded file** — Claude will offer to install the skill.
-   If double-clicking doesn't offer that on your machine: open Claude → Settings →
-   Capabilities/Skills → **drag the file in**. Same result.
-4. Open a Cowork session, connect your footage folder, and say:
-   **"check my footage folder"**
+1. **Get the files.** Click the download link from your AOD course materials (or the
+   **Releases** link on this page). Download the files that end in `.skill` — for
+   example `footage-organizer.skill`. They land in your **Downloads** folder and show
+   a Claude icon.
+2. **Install each one.** With Claude open, **double-click the downloaded file**. A
+   dialog should appear asking to add the skill — click **Install**. *(Nothing
+   happened? Make sure Claude is open, then try again. Still nothing? Open Claude,
+   click **Settings**, find **Skills** (sometimes under "Capabilities"), and drag the
+   file from Downloads straight onto that window. Same result.)*
+3. **Check it worked.** The skill appears in that Settings → Skills list. That's your
+   confirmation.
+4. **Use it.** Start a new Cowork conversation in Claude, give it access to your
+   footage folder when it asks (or use the **+** / folder button in the chat to choose
+   your project folder or drive), and type: **"check my footage folder"**
 
 The skill takes it from there — it introduces itself, looks at your drive (reading
-only), and walks you through everything conversationally. If a skill ever needs a
-helper installed (like the transcription engine), **it asks your permission and does
-it for you** — you never have to open Terminal.
+only — nothing moves without your approval), and talks you through everything. If a
+skill ever needs a helper tool installed (like the transcription engine), **it asks
+your permission and installs it for you**, narrating as it goes.
 
 > 🧭 **Start with footage-organizer.** It needs nothing installed and gives you a
 > full report of your drive in about a minute. Add the index next ("index this
 > drive"). Install the analyst when you want transcripts and face ID — its one-time
-> setup downloads ~4 GB of free, local AI tools and takes 10–20 minutes, and the
-> skill walks you through all of it.
+> setup downloads about 4 GB of free AI tools that run privately on your Mac. It
+> takes 10–20 minutes, Claude narrates progress the whole way (long quiet stretches
+> are normal — it tells you which ones), and if anything gets interrupted it picks
+> up exactly where it left off. You only ever do this once.
 
 ## Your first five minutes (just say these)
 
@@ -60,8 +74,8 @@ these prompts are the product:
 3. **"Index this drive — call it [your drive's name]"** → the drive becomes
    permanently searchable
 4. **"Show me my footage library"** → a visual page of your clips, built from
-   *your* footage (clips that your browser can't preview show their location
-   instead — Safari plays the most formats)
+   whatever you've indexed so far (so do step 3 first). Clips your browser can't
+   preview show their location instead — Safari plays the most formats.
 5. **"Transcribe this interview"** → transcript with timecodes (first run installs
    the free transcription engine — Claude walks you through it)
 6. Months later: **"Which drive has the interview where she talks about her

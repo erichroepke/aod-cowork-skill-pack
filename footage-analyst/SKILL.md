@@ -183,6 +183,12 @@ python3 -c "import whisper, face_recognition, sklearn, PIL, numpy; print('all ok
 
 This requires a free HuggingFace account. Skip it if the user only wants transcription.
 
+**Explain it to the user in plain English first:** "Speaker separation (figuring out
+who's talking when) uses a free AI model from HuggingFace — think of it as a public
+library for AI tools. You'll make a free account and click 'agree' on the tool's usage
+page — it's a usage agreement, not legal paperwork. Takes about 2 minutes, and you only
+ever do it once." Avoid the word "diarization" with users — say "speaker separation."
+
 **Step E1 — Install the package**:
 ```bash
 pip3 install pyannote.audio --break-system-packages
@@ -235,10 +241,12 @@ mlx_whisper "/path/to/clip.mov" --output-dir "/path/to/out" --output-format json
   --model mlx-community/whisper-base-mlx
 ```
 
-The JSON output contains `segments` with `start`/`end`/`text` — present the transcript,
-then feed it to the footage index (Step 6) like any other result. On Intel Macs, or if
-mlx-whisper fails, fall back to `openai-whisper` from the main install path. Either way
-the user gets the same transcript; only speed differs.
+The JSON output is `{"segments": [...]}` with `start`/`end`/`text` per segment (no
+`speaker` field — speaker separation is skipped on this fast path). The footage-index
+`ingest-transcript` command accepts this file directly. Present the transcript, then
+feed it to the index (Step 6) like any other result. On Intel Macs, or if mlx-whisper
+fails, fall back to `openai-whisper` from the main install path. Either way the user
+gets the same transcript; only speed differs.
 
 ---
 
@@ -375,6 +383,10 @@ python3 <skill_dir>/scripts/analyze_footage.py \
   [--whisper-model base]         # tiny/base/small/medium/large (default: base)
 ```
 
+**Output location rule:** `--output` must point OUTSIDE the footage tree — never
+inside `01_footage/` and never inside a card folder (the scripts refuse and explain
+if it does). Good choices: the project's `09_exports/` or a separate analysis folder.
+
 **Whisper model sizes:**
 - `tiny` — fastest, least accurate (~1GB RAM)
 - `base` — good default (~1GB RAM)
@@ -392,7 +404,8 @@ After Phase 2 finishes, tell the user:
 - Speakers detected (if diarization ran)
 - Path to `report.html`
 
-Present the HTML file using `mcp__cowork__present_files`.
+Present the HTML report to the user: `open "/path/to/report.html"` works everywhere
+on macOS; if the environment offers a file-presentation tool, use that as well.
 
 ---
 
@@ -401,6 +414,10 @@ Present the HTML file using `mcp__cowork__present_files`.
 Phase 2 writes `transcript.json` in the output directory — exactly the format the
 **footage-index** skill ingests. If the index skill is installed, offer:
 "Want me to add this to your footage index so it's searchable forever?"
+
+(`<footage-index_skill_dir>` below means the footage-index skill's own install
+directory — you know it if that skill is active in this session; otherwise locate
+its `scripts/footage_index.py` under the same skills folder this skill lives in.)
 
 ```bash
 python3 <footage-index_skill_dir>/scripts/footage_index.py ingest-transcript \

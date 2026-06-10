@@ -39,7 +39,9 @@ reports, a visual HTML summary, and an undo log for everything.
 3. **Moves happen ONLY through the Safe Move Protocol below** — never freehand `mv`
    commands. Every move goes through `scripts/move_with_manifest.py` so checksums are
    verified and the undo log is always written. If you cannot run the script, you do
-   not move anything.
+   not move anything. **Renaming a folder or file in place (e.g. `June9` →
+   `2026-06-09`) IS a move and goes through the script too — there are no exceptions
+   for "simple renames."**
 4. **Camera card structures are sealed units.** Folders containing `DCIM`, `PRIVATE`,
    `CONTENTS`, `CLIPS`, `XDROOT`, `M4ROOT` or similar are original card dumps. They move
    as a whole or not at all. NEVER reorganize, rename, or restructure anything inside them.
@@ -163,19 +165,27 @@ pip3 install xxhash --break-system-packages
 
 The script falls back to MD5 automatically if xxhash isn't available.
 
+**When narrating to the user, describe what you're doing in plain English** ("installing
+a fast file-verification tool — takes about 30 seconds") — don't paste raw commands or
+flags like `--break-system-packages` into your message; technical strings read as scary
+to this audience. Sidecar files are written with the `.xxh64` extension.
+
 ```bash
 # Scan footage (per-card by default for big drives — full scan is opt-in)
 python3 <skill_dir>/scripts/checksum_scan.py \
   --path "/path/to/project/01_footage" \
   --json "/path/to/project/_checksums.json"
 
-# Optionally write .xxhash sidecars for unverified files
+# Optionally write .xxh64 sidecars for unverified files
 python3 <skill_dir>/scripts/checksum_scan.py --path "..." --write-sidecars
 ```
 
-Any mismatch between a computed hash and an existing sidecar (camera `.md5`/`.xxhash`
-sidecars from Arri/RED/Sony cards) is a 🔴 **corruption warning** — flag it prominently
-and tell the user not to touch the source until investigated.
+Any mismatch between a computed hash and an existing sidecar (camera `.md5` sidecars
+from Arri/RED/Sony cards, or this skill's own `.xxh64` files) is a 🔴 **corruption
+warning** — flag it prominently and tell the user not to touch the source until
+investigated. A 🟠 "unverifiable" result means a sidecar exists in a different
+algorithm than this machine can compute — offer to install xxhash, never treat it
+as corruption.
 
 On large drives, scope checksums per card folder and tell the user roughly how long a
 full scan would take before offering it.
@@ -222,6 +232,9 @@ of this footage?"*
 - No backup → **no moves.** Deliver the audit, the plan, and a recommendation to back up
   first. This is not negotiable; say so kindly: "Rule one of media management — never
   reorganize the only copy."
+- **Accepting the user's word about their backup relaxes NOTHING else.** Checksums are
+  not skippable — they run inside the script and there is no flag to turn them off.
+  If asked to skip them: explain that verification is built in and costs seconds.
 
 **3. Approve.** Show the full numbered plan in plain English. The user must say yes.
 Partial approval is fine — execute only approved lines.
