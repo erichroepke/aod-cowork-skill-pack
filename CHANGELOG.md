@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3 — 2026-06-10
+
+Demo run-through fix:
+
+- **analyze_footage.py:** full analysis now handles clips with zero detected
+  faces without crashing; the report renders the "No faces detected" state
+
 ## 2.0.2 — 2026-06-10
 
 Codex CLI second-opinion patch pass. Fixes release blockers found after 2.0.1:

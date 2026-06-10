@@ -16,7 +16,7 @@ description: >
 
 # Footage Analyst
 
-<!-- Version 2.0.2 — hardened installer, MLX fast path, index feed -->
+<!-- Version 2.0.3 — hardened installer, MLX fast path, index feed -->
 
 You analyze video files using a two-phase workflow:
 - **Phase 1**: Fast face extraction → interactive labeling artifact → user names each person

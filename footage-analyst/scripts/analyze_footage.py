@@ -173,7 +173,7 @@ def detect_and_cluster_faces(frames, interval, face_threshold=0.55):
         from PIL import Image
     except ImportError as e:
         print(f"    Missing package: {e}. Skipping face analysis.")
-        return [], {}
+        return {}, {}
 
     all_encodings = []
     all_meta = []  # (timecode, frame_path, top, right, bottom, left)
@@ -189,7 +189,7 @@ def detect_and_cluster_faces(frames, interval, face_threshold=0.55):
 
     if not all_encodings:
         print("    No faces detected.")
-        return [], {}
+        return {}, {}
 
     print(f"    Detected {len(all_encodings)} face instances across {len(frames)} frames")
     print("  ▸ Clustering faces...")
