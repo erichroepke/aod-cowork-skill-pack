@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.7 — 2026-06-11
+
+Install instructions corrected (docs only, no code changes):
+
+- **README + release notes:** the documented, working install path is
+  **Customize → Skills → + → Create skill → Upload a skill** inside Claude.
+  Double-clicking a `.skill` file in Finder opens Claude but does NOT install
+  anything — verified on a real machine 2026-06-10 (file association exists,
+  no install handler fires, nothing lands in the account). Added the one-time
+  prerequisite (Settings → Capabilities → "Code execution and file creation")
+  and the toggle-ON verification step. Skills live in the Claude account, not
+  on local disk.
+
 ## 2.0.6 — 2026-06-10
 
 Closes the last open Codex-audit finding (#16, library playback paths):

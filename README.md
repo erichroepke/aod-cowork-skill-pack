@@ -36,24 +36,27 @@ it's provided free, as-is.
 
 ---
 
-## Install (first time, ~2 minutes)
+## Install (first time, ~3 minutes)
 
 You need the **Claude desktop app** (the one with Cowork). For the organizer and the
 index, that's it — no other software, and you will never need to open Terminal. The
 analyst (transcription and face ID) needs free helper tools; **Claude installs those
 for you** the first time you use it, asking permission as it goes — still no Terminal.
 
+0. **One-time setting.** In Claude, open **Settings → Capabilities** and make sure
+   **"Code execution and file creation"** is turned ON. Skills need it to run.
 1. **Get the files.** Click the download link from your AOD course materials (or the
    **Releases** link on this page). Download the files that end in `.skill` — for
-   example `footage-organizer.skill`. They land in your **Downloads** folder and show
-   a Claude icon.
-2. **Install each one.** With Claude open, **double-click the downloaded file**. A
-   dialog should appear asking to add the skill — click **Install**. *(Nothing
-   happened? Make sure Claude is open, then try again. Still nothing? Open Claude,
-   click **Settings**, find **Skills** (sometimes under "Capabilities"), and drag the
-   file from Downloads straight onto that window. Same result.)*
-3. **Check it worked.** The skill appears in that Settings → Skills list. That's your
-   confirmation.
+   example `footage-organizer.skill`. They land in your **Downloads** folder.
+2. **Install each one.** In Claude, click **Customize** in the left sidebar, then
+   **Skills**. Click the **+** button, choose **Create skill → Upload a skill**, and
+   pick the downloaded file from your Downloads folder. Claude reads the skill and
+   shows you a short summary of what it does. Repeat for each of the three files.
+   *(Don't double-click the `.skill` files in Finder — that opens Claude but does
+   not install anything. Go through Customize → Skills.)*
+3. **Check it worked.** Each skill now appears in your **Customize → Skills** list
+   with a toggle — make sure the toggle is **ON**. Off means Claude ignores it.
+   Skills live in your Claude account, so they follow you across your devices.
 4. **Use it.** Start a new Cowork conversation in Claude, give it access to your
    footage folder when it asks (or use the **+** / folder button in the chat to choose
    your project folder or drive), and type: **"check my footage folder"**
