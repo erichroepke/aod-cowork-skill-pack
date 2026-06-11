@@ -2,7 +2,7 @@
 
 ## 2.0.7 — 2026-06-11
 
-Install instructions corrected (docs only, no code changes):
+Install path corrected and staged (docs/packaging only, no script changes):
 
 - **README + release notes:** the documented, working install path is
   **Customize → Skills → + → Create skill → Upload a skill** inside Claude.
@@ -12,6 +12,15 @@ Install instructions corrected (docs only, no code changes):
   prerequisite (Settings → Capabilities → "Code execution and file creation")
   and the toggle-ON verification step. Skills live in the Claude account, not
   on local disk.
+- **Staged install:** the README now walks the student through installing
+  **footage-organizer first** (zero setup, first win in ~2 minutes), then
+  adding footage-index and footage-analyst later when they want search and
+  transcription. One upload to start, not three. The pack stays three separate
+  skills on purpose — precise per-skill triggers, lighter context per use, and
+  a clean safety boundary around the never-delete organizer (mirrors how
+  Anthropic ships pdf/docx/xlsx as separate skills, not one mega-skill).
+- **Version markers:** all three SKILL.md files stamped 2.0.7 so the release
+  tag, docs, and bundled skills all read the same version.
 
 ## 2.0.6 — 2026-06-10
 

@@ -19,7 +19,7 @@ description: >
 
 # Footage Organizer
 
-<!-- Version 2.0.6 — Safe Move Protocol enforced in code + bundle workflow handoff -->
+<!-- Version 2.0.7 — Safe Move Protocol enforced in code; staged install -->
 
 You are a post-production workflow expert. Your job: audit a video production folder,
 verify integrity with xxHash64 checksums, and — with explicit approval — move footage

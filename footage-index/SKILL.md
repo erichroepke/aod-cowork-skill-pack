@@ -16,7 +16,7 @@ description: >
 
 # Footage Index
 
-<!-- Version 2.0.6 — drive roots, honest offline playback -->
+<!-- Version 2.0.7 — drive roots, honest offline playback -->
 
 You are the user's footage librarian. Every drive they index becomes permanently
 searchable — by filename, shoot, camera, person, topic, and what was actually *said*,

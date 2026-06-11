@@ -36,30 +36,45 @@ it's provided free, as-is.
 
 ---
 
-## Install (first time, ~3 minutes)
+## Install (first win in ~2 minutes)
 
-You need the **Claude desktop app** (the one with Cowork). For the organizer and the
-index, that's it — no other software, and you will never need to open Terminal. The
-analyst (transcription and face ID) needs free helper tools; **Claude installs those
-for you** the first time you use it, asking permission as it goes — still no Terminal.
+You need the **Claude desktop app** (the one with Cowork). **Start with just the
+organizer** — it needs no other software, you never open Terminal, and you'll have an
+organized drive in a couple of minutes. Add the other two skills later, only when you
+want them. You don't have to install all three at once.
 
-0. **One-time setting.** In Claude, open **Settings → Capabilities** and make sure
-   **"Code execution and file creation"** is turned ON. Skills need it to run.
-1. **Get the files.** Click the download link from your AOD course materials (or the
-   **Releases** link on this page). Download the files that end in `.skill` — for
-   example `footage-organizer.skill`. They land in your **Downloads** folder.
-2. **Install each one.** In Claude, click **Customize** in the left sidebar, then
-   **Skills**. Click the **+** button, choose **Create skill → Upload a skill**, and
-   pick the downloaded file from your Downloads folder. Claude reads the skill and
-   shows you a short summary of what it does. Repeat for each of the three files.
-   *(Don't double-click the `.skill` files in Finder — that opens Claude but does
-   not install anything. Go through Customize → Skills.)*
-3. **Check it worked.** Each skill now appears in your **Customize → Skills** list
-   with a toggle — make sure the toggle is **ON**. Off means Claude ignores it.
-   Skills live in your Claude account, so they follow you across your devices.
-4. **Use it.** Start a new Cowork conversation in Claude, give it access to your
-   footage folder when it asks (or use the **+** / folder button in the chat to choose
-   your project folder or drive), and type: **"check my footage folder"**
+**One-time setting (do this first).** In Claude, open **Settings → Capabilities** and
+make sure **"Code execution and file creation"** is turned ON. Skills need it to run.
+
+### Step 1 — install the organizer (your first win)
+
+1. **Download** `footage-organizer.skill` from the **Releases** link on this page (or
+   the link in your AOD course materials). It lands in your **Downloads** folder.
+2. In Claude, click **Customize** in the left sidebar → **Skills**. Click the **+**
+   button → **Create skill** → **Upload a skill**, and pick `footage-organizer.skill`
+   from Downloads. Claude reads it and shows a short summary.
+   *(Don't double-click the `.skill` file in Finder — that opens Claude but installs
+   nothing. Always go through Customize → Skills.)*
+3. Make sure its toggle in **Customize → Skills** is **ON**. (Skills live in your
+   Claude account, so they follow you across your devices.)
+4. Start a new Cowork conversation, give Claude access to your footage folder when it
+   asks (or use the **+** / folder button to choose your project folder or drive), and
+   type: **"check my footage folder."**
+
+That's the whole first experience. No terminal, no setup, nothing to break.
+
+### Step 2 — add search and transcription when you want them
+
+When you're ready for searchable footage and transcripts, install the other two the
+same way (**Customize → Skills → + → Upload a skill**):
+
+- **`footage-index.skill`** — searchable memory of every drive. Still zero setup.
+- **`footage-analyst.skill`** — transcripts + face ID. The first time you use it,
+  Claude installs its free helper tools for you, asking permission as it goes — still
+  no Terminal.
+
+Install all three and they work as one pack: organize → analyze → index → then just
+chat with your footage.
 
 **Important:** do not drag individual video files into the chat. Put footage in the
 project folder or connected drive first, then give Claude access to that folder. The
