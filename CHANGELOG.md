@@ -21,6 +21,9 @@ Honest version reset + AOD naming. No code behavior change.
   NEW skills in your account, not in-place updates. Remove the old
   `footage-organizer` (etc.) from Customize → Skills and install the `aod-`
   versions.
+- **README download links:** added direct GitHub release links for all three
+  `.skill` files and clarified that normal users should not download the source
+  code zip.
 
 ---
 

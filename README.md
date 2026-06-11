@@ -50,6 +50,17 @@ want them. You don't have to install all three at once.
 **One-time setting (do this first).** In Claude, open **Settings → Capabilities** and
 make sure **"Code execution and file creation"** is turned ON. Skills need it to run.
 
+### Download links
+
+Download the `.skill` files from the current release:
+
+- [`aod-footage-organizer.skill`](https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-organizer.skill)
+- [`aod-footage-index.skill`](https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-index.skill)
+- [`aod-footage-analyst.skill`](https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-analyst.skill)
+
+Do not download the "Source code" zip for normal use. That is only for developers.
+Users want the `.skill` files above.
+
 ### Step 1 — install the organizer (your first win)
 
 1. **Download** `aod-footage-organizer.skill` from the **Releases** link on this page (or
