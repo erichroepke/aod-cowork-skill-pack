@@ -64,6 +64,49 @@ These skills run inside **Claude Cowork** — the desktop version of Claude with
 
 **Before you start:** make sure you have the Claude desktop app installed and that you are signed in on a Pro or Max plan.
 
+### The easy way: let Claude install it for you
+
+You don't have to follow the steps below on your own. Open a **new chat in the Claude desktop app**, copy the entire block below, and paste it in. Claude becomes your install assistant and walks you through everything, one step at a time, checking your setup as you go.
+
+```
+I want to install a Claude skill called "aod-footage-organizer" from the AOD
+Footage Pack. Please act as my personal install assistant and walk me through
+it ONE STEP AT A TIME — wait for me to confirm each step before moving to the
+next. I am not technical, so keep instructions simple and tell me exactly what
+to click. Here is what we need to do together:
+
+1. First, help me check that "Code execution and file creation" is turned ON.
+   Tell me how to find it: Settings → Capabilities in this app. Wait until I
+   confirm it's on.
+
+2. Then send me this download link and tell me to click it. It saves a file
+   called aod-footage-organizer.skill to my Downloads folder:
+   https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-organizer.skill
+   Tell me NOT to double-click the downloaded file — that does nothing.
+
+3. Then walk me through installing it: in this app's left sidebar I click
+   "Customize", then "Skills", then the "+" button, then "Create skill", then
+   "Upload a skill", and pick the .skill file from my Downloads folder. Stay
+   with me while I do this and answer questions if I get stuck.
+
+4. Then have me check that the skill's toggle is ON in the Skills list.
+
+5. Finally, tell me to start a NEW conversation (skills only load in fresh
+   chats), give Claude access to a COPY of my footage folder — never my only
+   original — using the + / folder button, and type: "Check my footage folder."
+
+Important context for you, Claude: this skill audits and organizes documentary
+footage folders. It is read-only until I approve moves, it can never delete
+files, and I should always work on a backup copy of my footage. Remind me of
+the backup rule before step 5. Start with step 1 now.
+```
+
+When you finish and Claude confirms the skill is working, come back here for the other two skills — or just follow the manual steps below if you prefer doing it yourself.
+
+---
+
+### The manual way (same steps, written out)
+
 ---
 
 ### Step 1 — turn on Code execution (do this once)
