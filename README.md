@@ -1,8 +1,26 @@
 # AOD Footage Pack
 
-> **Alpha (v0.1.0).** Early and under active development. The core has been tested hard,
-> but the install and end-to-end run have not yet been proven by an outside user. Treat
-> it as a preview, keep a backup of your footage, and expect rough edges.
+---
+
+**A note from me before you start**
+
+This is something I built for you — for this community. It works. I use it myself, I've tested it hard, and I think you're going to find it genuinely useful. But it's early, and you're among the first people outside my own workflow to run it. So go in with that expectation: it's real, it's useful, and there will be rough edges.
+
+The one thing I want you to take seriously: **always point this at a copy of your footage, not your originals.** The tool is designed so it physically cannot delete your files — but that doesn't mean I want you working on the only copy of something irreplaceable.
+
+The easiest way to protect yourself is to make a proxy copy first. Proxies are just smaller, lower-resolution versions of your clips — same filenames, a fraction of the size — safe to experiment on. Your editing app can generate them:
+
+- **Premiere Pro:** right-click your clips in the Project panel → Proxy → Create Proxies
+- **Final Cut Pro:** File → Transcode Media → Create Proxy Media
+- **DaVinci Resolve:** right-click in the Media Pool → Generate Optimized Media
+
+Or the simplest version: just duplicate your footage folder in Finder before you start. Not technically proxies, but it's a real copy — and that's what matters. Point the organizer at the copy. Keep your originals where they are. Once you're happy with how it runs, apply the same workflow to the real drives.
+
+This is alpha software. It's provided free, as-is, with no warranty. Back up your footage. You're responsible for your material — the same as with any tool that touches camera originals.
+
+— Erich
+
+---
 
 **Claude becomes your post supervisor.** Three skills for documentary filmmakers:
 
@@ -189,6 +207,14 @@ with rules lives in [aod-footage-organizer/SKILL.md](aod-footage-organizer/SKILL
 ## License
 
 MIT. Use freely, share freely. No warranty of any kind — **back up your footage.**
+
+---
+
+## What I use alongside this
+
+These are tools I'm actively using in my own post workflow. None of them are required to run this pack — but if you want to go deeper into organizing your edits and managing projects, this is what I reach for.
+
+**[Wideframe](https://try.wideframe.com)** — AI coworker for video editors. Where the AOD pack handles your raw footage (organizing, indexing, transcription), Wideframe goes further into the editorial layer: it understands your project semantically, lets you search your library by meaning, and can rough-assemble sequences from a natural-language description. It outputs real Premiere Pro project files — not synthetic video, actual assembled timelines from your footage. I've been running it alongside this pack and they complement each other well: use the pack to get your footage organized and indexed, then bring Wideframe in when you're ready to start cutting. It's a paid app (Mac only, Apple Silicon), but if you're spending serious time in post, it's worth looking at.
 
 ---
 
