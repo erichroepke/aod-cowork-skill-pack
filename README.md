@@ -58,72 +58,92 @@ it's provided free, as-is.
 
 ---
 
-## Install (first win in ~2 minutes)
+## How to install in Claude Cowork
 
-You need the **Claude desktop app** (the one with Cowork). **Start with just the
-organizer** — it needs no other software, you never open Terminal, and you'll have an
-organized drive in a couple of minutes. Add the other two skills later, only when you
-want them. You don't have to install all three at once.
+These skills run inside **Claude Cowork** — the desktop version of Claude with the ability to run code and access your files. You need the Claude desktop app and a paid plan (Pro or Max). The web version at claude.ai does not support Cowork.
 
-**One-time setting (do this first).** In Claude, open **Settings → Capabilities** and
-make sure **"Code execution and file creation"** is turned ON. Skills need it to run.
+**Before you start:** make sure you have the Claude desktop app installed and that you are signed in on a Pro or Max plan.
 
-### Download links
+---
 
-Download the `.skill` files from the current release:
+### Step 1 — turn on Code execution (do this once)
+
+1. Open the Claude desktop app.
+2. Click your profile icon or go to **Settings**.
+3. Click **Capabilities**.
+4. Find **"Code execution and file creation"** and make sure the toggle is **ON**.
+
+If this setting is off, the skills cannot run. It only needs to be enabled once — Claude remembers it.
+
+---
+
+### Step 2 — download the skill files
+
+Click each link below. The file will download to your **Downloads** folder.
 
 - [`aod-footage-organizer.skill`](https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-organizer.skill)
 - [`aod-footage-index.skill`](https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-index.skill)
 - [`aod-footage-analyst.skill`](https://github.com/erichroepke/aod-footage-pack/releases/download/v0.1.0-alpha/aod-footage-analyst.skill)
 
-Do not download the "Source code" zip for normal use. That is only for developers.
-Users want the `.skill` files above.
+Do not double-click these files in Finder and do not download the "Source code" zip. The steps below are the only way to install them.
 
-### Step 1 — install the organizer (your first win)
+---
 
-1. **Download** `aod-footage-organizer.skill` from the **Releases** link on this page (or
-   the link in your AOD course materials). It lands in your **Downloads** folder.
-2. In Claude, click **Customize** in the left sidebar → **Skills**. Click the **+**
-   button → **Create skill** → **Upload a skill**, and pick `aod-footage-organizer.skill`
-   from Downloads. Claude reads it and shows a short summary.
-   *(Don't double-click the `.skill` file in Finder — that opens Claude but installs
-   nothing. Always go through Customize → Skills.)*
-3. Make sure its toggle in **Customize → Skills** is **ON**. (Skills live in your
-   Claude account, so they follow you across your devices.)
-4. Start a new Cowork conversation, give Claude access to your footage folder when it
-   asks (or use the **+** / folder button to choose your project folder or drive), and
-   type: **"check my footage folder."**
+### Step 3 — install the organizer skill
 
-That's the whole first experience. No terminal, no setup, nothing to break.
+Start with just the organizer. The other two come later.
 
-### Step 2 — add search and transcription when you want them
+1. In the Claude desktop app, click **Customize** in the left sidebar.
+2. Click **Skills**.
+3. Click the **+** button → **Create skill** → **Upload a skill**.
+4. A file picker opens. Navigate to your **Downloads** folder and select **`aod-footage-organizer.skill`**.
+5. Claude reads the file and shows you a short description of what the skill does. This is normal.
+6. Make sure the toggle next to the skill is switched **ON**.
+7. The skill is now installed. It lives in your Claude account and follows you across your devices.
 
-When you're ready for searchable footage and transcripts, install the other two the
-same way (**Customize → Skills → + → Upload a skill**):
+---
 
-- **`aod-footage-index.skill`** — searchable memory of every drive. Still zero setup.
-- **`aod-footage-analyst.skill`** — transcripts + face ID. The first time you use it,
-  Claude installs its free helper tools for you, asking permission as it goes — still
-  no Terminal.
+### Step 4 — run it for the first time
 
-Install all three and they work as one pack: organize → analyze → index → then just
-chat with your footage.
+1. Start a **new Cowork conversation** (click the pencil/compose icon, or open a new chat).
+2. Click the **+** button or the folder icon in the chat and give Claude access to your footage folder or drive. This is how Claude sees your files — you are granting access, not uploading anything.
+3. Type exactly this:
 
-**Important:** do not drag individual video files into the chat. Put footage in the
-project folder or connected drive first, then give Claude access to that folder. The
-skills work by scanning the real folder on disk, preserving paths, drive names, card
-structures, sidecars, and future index/search results.
+   > **"Check my footage folder."**
 
-The skill takes it from there — it introduces itself, looks at your drive (reading
-only — nothing moves without your approval), and talks you through everything. If a
-skill ever needs a helper tool installed (like the transcription engine), **it asks
-your permission and installs it for you**, narrating as it goes.
+Claude will scan the folder (read-only — nothing moves yet), show you the folder tree, flag any issues, and tell you what it found. That is the whole first experience. No Terminal, no setup, nothing to break.
 
-> 🧭 **Install all three. Use them as one pack.** Start by asking Claude to run the
-> AOD footage workflow on a folder or drive. Claude audits and safely organizes first,
-> analyzes selected footage when transcripts or people are useful, then indexes last.
-> After the index says the folder is complete, the normal interface is chat:
-> "find the interview where..." or "show me everything with Sarah."
+---
+
+### Step 5 — add the index and analyst when you're ready
+
+Once you have the organizer running, install the other two skills the same way (Customize → Skills → + → Upload a skill):
+
+**`aod-footage-index.skill`** — searchable memory of every drive you scan. Zero additional setup. After indexing a folder, you can ask things like "which drive has the interview about her father?" and get back a drive name, file path, and timecode.
+
+**`aod-footage-analyst.skill`** — transcription, speaker identification, and face labeling. The first time you use this one, Claude will need to install some free tools on your Mac. Here is exactly what it installs and why:
+
+| Tool | What it is | Why it's needed |
+|------|-----------|-----------------|
+| **Homebrew** | macOS package manager | Required to install ffmpeg and cmake |
+| **ffmpeg** | Video processing tool | Extracts audio and frames from your footage |
+| **cmake** | Build tool | Required to compile the face recognition library |
+| **openai-whisper** | Transcription model (runs locally) | Converts speech to text with timecodes |
+| **face_recognition** | Face detection library | Identifies and clusters faces across clips |
+| **pyannote.audio** | Speaker diarization | Separates "who said what" in multi-person recordings |
+| **numpy, Pillow, scikit-learn** | Python support libraries | Required by the above |
+
+Claude walks you through each install step by step, asking permission before it does anything. If the session dies mid-install, just run it again — it picks up where it left off and skips anything already done. This setup happens once and never again.
+
+---
+
+### Important: give Claude folder access, not individual files
+
+Do not drag video files directly into the chat. Instead, give Claude access to your footage folder or drive using the **+** / folder button, and let the skills scan that location. This preserves your folder structure, drive names, card structure, sidecar files, and everything the index and search depend on.
+
+---
+
+> **Start with the organizer. It needs no setup and gives you a result in minutes. Add the other two skills later, only when you want them.**
 
 ## How the bundle runs
 
@@ -206,7 +226,9 @@ with rules lives in [aod-footage-organizer/SKILL.md](aod-footage-organizer/SKILL
 
 ## License
 
-MIT. Use freely, share freely. No warranty of any kind — **back up your footage.**
+Copyright (c) 2026 Erich Roepke. All Rights Reserved.
+
+For use by enrolled AOD members only. No redistribution, modification, or commercial use without written permission. No warranty of any kind — **back up your footage.** See [LICENSE](LICENSE) for full terms.
 
 ---
 
