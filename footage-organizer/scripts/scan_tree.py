@@ -64,8 +64,9 @@ def scan(root: Path, max_depth: int):
     for dirpath, dirnames, filenames in os.walk(root):
         d = Path(dirpath)
         depth = len(d.parts) - root_depth
-        if depth >= max_depth:
-            dirnames[:] = []
+        # NOTE: depth never prunes the walk — camera cards nest media 9-10
+        # levels deep (AVCHD/BDMV/STREAM) and every file must be counted.
+        # max_depth only caps the per-folder DETAIL kept for the report.
         # skip hidden dirs entirely
         dirnames[:] = [n for n in dirnames if not n.startswith('.')]
         rel = str(d.relative_to(root)) if d != root else '.'
@@ -88,8 +89,9 @@ def scan(root: Path, max_depth: int):
             if ext == '.prproj':
                 result['prproj_files'].append(str(fp.relative_to(root)))
 
-        result['dirs'][rel] = {'files': len(files), 'media_files': media,
-                               'size': sizes, 'depth': depth}
+        if depth < max_depth:    # cap report detail, never the count
+            result['dirs'][rel] = {'files': len(files), 'media_files': media,
+                                   'size': sizes, 'depth': depth}
         result['totals']['files'] += len(files)
         result['totals']['media_files'] += media
         result['totals']['size'] += sizes
@@ -109,8 +111,12 @@ def scan(root: Path, max_depth: int):
                 'suggestion': 'rename to YYYY-MM-DD'})
 
         # loose media: media files sitting in a folder that also has subfolders
-        # (non-leaf), or directly in 01_footage root / a shoot root
-        if media > 0 and dirnames:
+        # (non-leaf), OR directly at a shallow level (project root, 01_footage,
+        # or a bare shoot folder) even when that folder is a leaf. Media inside
+        # a sealed card structure is never loose — it lives where the camera
+        # put it.
+        inside_card = any(part in CARD_MARKERS for part in d.parts[root_depth:])
+        if media > 0 and not inside_card and (dirnames or depth <= 2):
             for f in files:
                 if (d / f).suffix.lower() in MEDIA_EXTENSIONS:
                     result['loose_media'].append(str((d / f).relative_to(root)))
@@ -143,7 +149,7 @@ def print_summary(r):
              sorted(set(r['card_units'])))
     cap_list("📅 Date-format problems", r['date_problems'],
              lambda p: f"   {p['path']}  ('{p['name']}' → {p['suggestion']})")
-    cap_list("🟡 Loose media (in non-leaf folders — candidates for the move plan)",
+    cap_list("🟡 Loose media (outside card structures — candidates for the move plan)",
              r['loose_media'])
     cap_list("🎬 .prproj files", r['prproj_files'])
     print()
@@ -153,7 +159,9 @@ def main():
     ap = argparse.ArgumentParser(description='Read-only summarizing footage scanner')
     ap.add_argument('--path', required=True)
     ap.add_argument('--json', default=None, help='write full results to this path')
-    ap.add_argument('--max-depth', type=int, default=8)
+    ap.add_argument('--max-depth', type=int, default=8,
+                    help='caps per-folder detail in the report; counting always '
+                         'walks the full tree')
     args = ap.parse_args()
 
     root = Path(args.path).expanduser()

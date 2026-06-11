@@ -16,7 +16,7 @@ description: >
 
 # Footage Analyst
 
-<!-- Version 2.0.3 — hardened installer, MLX fast path, index feed -->
+<!-- Version 2.0.4 — hardened installer, MLX fast path, bundle index feed -->
 
 You analyze video files using a two-phase workflow:
 - **Phase 1**: Fast face extraction → interactive labeling artifact → user names each person
@@ -24,6 +24,11 @@ You analyze video files using a two-phase workflow:
 
 For transcription-ONLY requests there is a lighter fast path (see "Quick transcribe"
 below) that skips the heavy face-recognition stack entirely.
+
+Prefer files that live inside the user's project folder or connected drive. Do not ask
+the user to drag footage into the chat. If they want to analyze a new clip, tell them
+to place it in the project folder/drive first, then point Claude at that file path so
+the transcript can feed the final footage index cleanly.
 
 ---
 
@@ -412,8 +417,12 @@ on macOS; if the environment offers a file-presentation tool, use that as well.
 ## Step 6: Feed the footage index (if footage-index is installed)
 
 Phase 2 writes `transcript.json` in the output directory — exactly the format the
-**footage-index** skill ingests. If the index skill is installed, offer:
-"Want me to add this to your footage index so it's searchable forever?"
+**footage-index** skill ingests. In the full AOD Footage Pack workflow, analysis feeds
+the final index step. Do not show the user an internal handoff packet; just summarize
+the useful result ("transcript ready", "faces labeled", "ready to index").
+
+If the index skill is installed, offer:
+"Ready for me to index this folder so you can chat with these transcripts?"
 
 (`<footage-index_skill_dir>` below means the footage-index skill's own install
 directory — you know it if that skill is active in this session; otherwise locate
@@ -433,8 +442,9 @@ python3 <footage-index_skill_dir>/scripts/footage_index.py tag \
 ```
 
 (If the clip's drive isn't indexed yet, run `ingest-path` on the project first —
-see the footage-index skill.) After this, the user can ask "where does Sarah talk
-about X" months from now and get this clip + timecode back.
+see the footage-index skill.) After this, tell the user plainly that the folder is
+indexed and they can ask "where does Sarah talk about X" months from now and get this
+clip + timecode back.
 
 ---
 

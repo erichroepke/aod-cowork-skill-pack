@@ -1,5 +1,48 @@
 # Changelog
 
+## 2.0.5 — 2026-06-10
+
+Safety enforcement pass — every remaining open finding from the 2026-06-10 Codex
+audit moved from prompt-level guidance into code, verified against an adversarial
+fixture tree (deep AVCHD cards, sealed-card escapes, nested symlinks, empty
+sidecars, unicode/space/quote filenames):
+
+- **move_with_manifest.py:** real runs now require `--backup-confirmed` (the
+  Backup Gate is enforced in code, not just in the skill prompt); sealed
+  camera-card structures (`DCIM`, `PRIVATE`, `AVCHD`, ...) are enforced at
+  validation — nothing moves out of, into, or within a card unit, while moving
+  the whole card folder stays allowed; folders containing nested symlinks are
+  refused at validation; a fsynced `rename_started` record now lands in the
+  manifest BEFORE each rename, so a crash mid-run can never strand a moved file
+  with no undo entry, and `--undo` recovers started-but-unverified renames
+- **checksum_scan.py:** `--write-sidecars` never writes inside sealed card
+  structures (checksums stay in the report/JSON only); empty or unreadable
+  sidecar files report 🟠 `sidecar_malformed` and exit non-zero instead of
+  crashing
+- **scan_tree.py:** depth no longer prunes the walk — media nested 9-10 levels
+  deep in AVCHD/BDMV/STREAM card structures is always counted (`--max-depth`
+  only caps report detail); loose media is now also flagged in leaf shoot
+  folders and at shallow levels, and media inside sealed cards is never
+  flagged as loose
+- **README:** undo claim made accurate (same-drive moves undoable; cross-drive
+  copies never touch the original); "no other software" split — organizer/index
+  need nothing, analyst guides its own helper installs
+
+## 2.0.4 — 2026-06-10
+
+Bundle workflow guidance:
+
+- **README:** reframed the three skills as one pack: connect/download, organize,
+  analyze selected footage, index final state, then chat with the footage
+- **footage-organizer:** offers analyst-before-index and index-final handoffs after
+  organization/verification
+- **footage-analyst:** feeds transcripts and labels into the final index step without
+  exposing internal handoff packets
+- **footage-index:** documents its bundle role as the final searchable state and
+  adds the plain "this folder is indexed" status pattern
+- **All skills:** clarified that users should put footage in the project folder/drive
+  and grant folder access, not drag individual media files into the chat
+
 ## 2.0.3 — 2026-06-10
 
 Demo run-through fix:

@@ -63,14 +63,32 @@ def sidecar_path(file_path, algo):
 
 
 def read_sidecar(file_path):
-    """Return (hash, algo) from an existing sidecar, or None.
+    """Return (hash, algo) from an existing sidecar, None if there is no
+    sidecar, or ('', algo) if a sidecar exists but is empty/unreadable.
     Always reports which algorithm the sidecar was written with, so the
     caller never compares hashes from two different algorithms."""
     for ext, algo in (('.xxh64', 'xxh64'), ('.xxhash', 'xxh64'), ('.md5', 'md5')):
         sp = Path(str(file_path) + ext)
         if sp.exists():
-            return sp.read_text().strip().split()[0], algo
+            try:
+                tokens = sp.read_text(errors='replace').strip().split()
+            except OSError:
+                tokens = []
+            return (tokens[0] if tokens else ''), algo
     return None
+
+
+# Folder names that mark an original camera-card dump (sealed units).
+# Keep in sync with scan_tree.py / move_with_manifest.py.
+CARD_MARKERS = {'DCIM', 'PRIVATE', 'CONTENTS', 'CLIPS', 'XDROOT', 'M4ROOT',
+                'AVCHD', 'BDMV', 'MISC'}
+
+
+def inside_card(file_path, root):
+    """True if the file sits inside a sealed camera-card structure.
+    Exact uppercase match (cameras always write DCIM/PRIVATE/... in caps)."""
+    rel_parts = Path(file_path).relative_to(root).parts
+    return any(part in CARD_MARKERS for part in rel_parts)
 
 
 def human_size(n):
@@ -114,6 +132,12 @@ def scan(root_path, write_sidecars=False):
             existing_hash = None
             computed, algo = preferred_hash_file(fpath)
             status, icon = 'no_sidecar', '⚪'
+        elif existing[0] == '':
+            # sidecar file exists but holds no hash — flag it, never crash,
+            # never overwrite it
+            existing_hash = None
+            computed, algo = preferred_hash_file(fpath)
+            status, icon = 'sidecar_malformed', '🟠'
         else:
             existing_hash, existing_algo = existing
             try:
@@ -135,9 +159,15 @@ def scan(root_path, write_sidecars=False):
         print(f"{icon} {computed[:12]}... [{algo}] {speed:.0f} MB/s")
 
         if write_sidecars and status == 'no_sidecar':
-            sp = sidecar_path(fpath, algo)
-            sp.write_text(f"{computed}  {fpath.name}\n")
-            print(f"     → wrote {sp.name}")
+            if inside_card(fpath, root):
+                # never write into an original card dump — the checksum is
+                # still recorded in the report/JSON, just not beside the file
+                print(f"     ⤷ inside a sealed card structure — checksum kept "
+                      f"in the report only, no sidecar written")
+            else:
+                sp = sidecar_path(fpath, algo)
+                sp.write_text(f"{computed}  {fpath.name}\n")
+                print(f"     → wrote {sp.name}")
 
         results.append({
             'path': str(rel),
@@ -156,6 +186,7 @@ def scan(root_path, write_sidecars=False):
     mismatches = [r for r in results if r['status'] == 'mismatch']
     no_sidecar = sum(1 for r in results if r['status'] == 'no_sidecar')
     unverifiable = sum(1 for r in results if r['status'] == 'sidecar_unverifiable')
+    malformed = sum(1 for r in results if r['status'] == 'sidecar_malformed')
     total_size = sum(r['size'] for r in results)
 
     print(f"\n{'='*60}")
@@ -164,6 +195,10 @@ def scan(root_path, write_sidecars=False):
     print(f"  ✅ Verified:    {verified}")
     print(f"  ⚪ No sidecar:  {no_sidecar}")
     print(f"  🔴 Mismatches:  {len(mismatches)}")
+    if malformed:
+        print(f"  🟠 Malformed sidecars: {malformed} — a checksum file exists but "
+              f"holds no hash. The media was hashed fresh; replace the empty "
+              f"sidecar after investigating where it came from.")
     if unverifiable:
         print(f"  🟠 Unverifiable: {unverifiable} — sidecars exist but use a different "
               f"algorithm than this machine can compute.")
@@ -189,6 +224,7 @@ def scan(root_path, write_sidecars=False):
         'verified': verified,
         'mismatches': len(mismatches),
         'no_sidecar': no_sidecar,
+        'malformed': malformed,
         'algo': results[0]['algo'] if results else 'xxh64',
     }
 
@@ -209,8 +245,8 @@ def main():
             json.dump(out, f, indent=2)
         print(f"  JSON saved to: {args.json}")
 
-    # Exit code: 0=clean, 1=mismatches found
-    sys.exit(1 if summary['mismatches'] > 0 else 0)
+    # Exit code: 0=clean, 1=mismatches or malformed sidecars found
+    sys.exit(1 if (summary['mismatches'] > 0 or summary['malformed'] > 0) else 0)
 
 
 if __name__ == '__main__':

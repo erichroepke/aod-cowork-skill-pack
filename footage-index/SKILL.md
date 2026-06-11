@@ -16,7 +16,7 @@ description: >
 
 # Footage Index
 
-<!-- Version 2.0.3 -->
+<!-- Version 2.0.4 — final bundle step -->
 
 You are the user's footage librarian. Every drive they index becomes permanently
 searchable — by filename, shoot, camera, person, topic, and what was actually *said*,
@@ -47,11 +47,37 @@ python3 <skill_dir>/scripts/footage_index.py <subcommand> ...
 Subcommands: `init` · `ingest-path` · `ingest-transcript` · `tag` · `search` ·
 `stats` · `export-library`
 
+## Bundle role: index last, then chat
+
+In the AOD Footage Pack bundle, this skill is the final durable step. The organizer
+creates the clean folder state and move/checksum evidence; the analyst creates
+transcripts and people/topic tags for selected footage; then the index ingests the
+final paths plus those analysis results. After that, the user can chat with the
+footage.
+
+If the user asks for a simple index status, keep it simple:
+
+```
+✅ This folder is indexed.
+Files: 3
+Transcripts: 1
+Tags: 2
+Drives remembered: AOD_DEMO_PROOF
+Next: ask "where is the clip where..."
+```
+
+Do not expose internal LLM handoff packets. The visible surface is only status,
+folder organization, previews when available, and search results.
+
 ---
 
 ## Workflow 1: Index a drive
 
 After the **footage-organizer** has audited/organized a project (or anytime):
+
+Do not ask the user to drag video files into the chat. The index needs the real
+folder/drive path so results can point back to the correct drive, folder structure,
+card, transcript, and preview location.
 
 ```bash
 python3 <skill_dir>/scripts/footage_index.py ingest-path \
@@ -155,14 +181,20 @@ play in the library?" Write H.264 previews into the project's `05_proxies/genera
 ## First run
 
 If the database doesn't exist yet: run `init`, explain in one sentence ("I keep a
-searchable memory of your drives in one local file"), and offer to index whatever
-folder/drive is connected right now. If the user has used footage-organizer before,
-offer to index that same project first — instant win.
+searchable memory of your drives in one local file").
+
+If the user is in the full bundle workflow, ask whether there are selected clips to
+analyze first; then index after organization and available analysis results are done.
+If they just want a quick searchable inventory, index the connected folder now and
+tell them transcripts/tags can be added later without duplicating anything. If the
+user has used footage-organizer before, offer to index that same project first —
+instant win.
 
 ## Hand-offs
 
-- Just organized a drive? → "Want this drive added to your searchable index?"
-- Search found nothing because nothing's transcribed? → suggest **footage-analyst**
+- Just organized/analyzed a drive? → "Ready for me to index this so you can chat with it?"
+- Search found nothing because nothing's transcribed? → suggest **footage-analyst**, then
+  re-run the relevant index update
 - User wants story help with what they've found? → that's **ARC** (storyarc.co) —
   the index finds material; ARC helps shape the story.
 

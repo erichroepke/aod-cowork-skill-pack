@@ -19,7 +19,7 @@ description: >
 
 # Footage Organizer
 
-<!-- Version 2.0.3 — Safe Move Protocol -->
+<!-- Version 2.0.4 — Safe Move Protocol + bundle workflow handoff -->
 
 You are a post-production workflow expert. Your job: audit a video production folder,
 verify integrity with xxHash64 checksums, and — with explicit approval — move footage
@@ -77,6 +77,9 @@ SCAN → PROPOSE PLAN → BACKUP GATE → USER APPROVES → CHECKSUM BEFORE
 ## Step 1: Scan (script, not raw find)
 
 If no folder is connected, ask the user to connect their project folder or drive root.
+Do **not** ask them to drag individual video files into the chat. Tell them to put
+footage in the project folder or drive, then grant access to that folder so paths,
+drive identity, card structures, and sidecars stay intact.
 
 Run the bundled scanner — it summarizes instead of flooding the conversation, which
 matters on multi-terabyte drives:
@@ -176,7 +179,9 @@ python3 <skill_dir>/scripts/checksum_scan.py \
   --path "/path/to/project/01_footage" \
   --json "/path/to/project/_checksums.json"
 
-# Optionally write .xxh64 sidecars for unverified files
+# Optionally write .xxh64 sidecars for unverified files. The script will NOT
+# write inside sealed card structures (DCIM, PRIVATE, ...) — those checksums
+# stay in the report/JSON only, so original card dumps are never modified.
 python3 <skill_dir>/scripts/checksum_scan.py --path "..." --write-sidecars
 ```
 
@@ -185,7 +190,9 @@ from Arri/RED/Sony cards, or this skill's own `.xxh64` files) is a 🔴 **corrup
 warning** — flag it prominently and tell the user not to touch the source until
 investigated. A 🟠 "unverifiable" result means a sidecar exists in a different
 algorithm than this machine can compute — offer to install xxhash, never treat it
-as corruption.
+as corruption. A 🟠 "malformed" result means a sidecar file exists but holds no
+hash — the media was hashed fresh and is fine until proven otherwise; investigate
+where the empty sidecar came from.
 
 On large drives, scope checksums per card folder and tell the user roughly how long a
 full scan would take before offering it.
@@ -235,6 +242,10 @@ of this footage?"*
 - **Accepting the user's word about their backup relaxes NOTHING else.** Checksums are
   not skippable — they run inside the script and there is no flag to turn them off.
   If asked to skip them: explain that verification is built in and costs seconds.
+- **The gate is enforced in code.** A real run requires `--backup-confirmed`; without
+  it the script refuses and moves nothing. Pass that flag ONLY after the user has
+  answered the backup question above — it is an assertion of their answer, never a
+  default.
 
 **3. Approve.** Show the full numbered plan in plain English. The user must say yes.
 Partial approval is fine — execute only approved lines.
@@ -247,10 +258,16 @@ python3 <skill_dir>/scripts/move_with_manifest.py \
   --plan "/path/to/project/_move_plan.json" --dry-run
 
 # Real run: checksums before, renames (or copy+verify cross-drive), checksums after,
-# appends every move to _move_manifest.jsonl
+# appends every move to _move_manifest.jsonl. --backup-confirmed is REQUIRED and
+# may only be passed after the user answered the Backup Gate question.
 python3 <skill_dir>/scripts/move_with_manifest.py \
-  --plan "/path/to/project/_move_plan.json"
+  --plan "/path/to/project/_move_plan.json" --backup-confirmed
 ```
+
+The script also refuses, in code, any plan line that moves footage out of, into, or
+within a sealed card structure (`DCIM`, `PRIVATE`, `AVCHD`, ...) and any folder that
+contains a symlink. If validation rejects a line, fix the plan — never work around
+the refusal with freehand `mv`.
 
 **5. Prove it.** Report the script's verification: files moved, hashes matched
 before/after, zero deletions. The phrase the user needs to hear: **"start and finish
@@ -278,11 +295,24 @@ folders panel** (`mkdir -p` commands + copy-all button).
 
 ## Step 7: Offer next steps
 
+If the user asked for the full AOD footage workflow, keep the visible status simple:
+folder tree, checkmarks, counts, and one short sidebar-style summary. Do not expose
+internal handoff packets or implementation plumbing.
+
+Offer next steps in this order:
+
 1. "Want me to create all missing framework folders?" (mkdir -p — creation is safe)
 2. "New footage to ingest? Give me shoot name + date and I'll stage the plan."
 3. "Want sidecar checksums written for the unverified cards?"
-4. "Want this drive added to your footage index so it's searchable later?"
+4. "Want me to analyze selected interviews/clips before I finalize the index?"
+   (hand off to the **footage-analyst** skill if installed)
+5. "Ready for me to index this folder so you can chat with it?"
    (hand off to the **footage-index** skill if installed)
+
+In the bundle workflow, indexing is the final durable state: organize/verify first,
+analyze selected footage when transcripts or people matter, then index the final
+paths, transcripts, and tags. Once the index completes, tell the user plainly:
+"This folder is indexed. You can ask me about the footage now."
 
 ---
 
