@@ -81,6 +81,8 @@ I want to be straight with you about where your material goes, because "it runs 
 
 **My plain advice:** if footage is under NDA, legally sensitive, or involves vulnerable subjects, think before you transcribe and index it. The files stay home, but the words and faces that come out of them become chat content. For most projects this is a complete non-issue. For some of yours, given the work this community does, it might matter. You're the only one who can make that call, so I'm giving you the information to make it.
 
+**And so you know the limits:** there is no fully local option for the parts Claude is involved in. Claude is a cloud model, so anything it reads has to travel to Anthropic's servers. That's how every Claude skill works, not something specific to this pack. If a piece of footage is sensitive enough that its transcript or the faces in it shouldn't pass through a cloud service at all, the answer today is simple: organize it (the organizer only sends file names), but don't transcribe or index it. I'm looking at ways future versions can keep more of this local, like labeling faces in a local page instead of the chat, but that's not built yet, and I'd rather you know the real picture now.
+
 **Third parties (analyst skill only):**
 
 - Speaker diarization (the "who said what" feature) is optional and requires a free HuggingFace account and access token. You'll create that account yourself, and HuggingFace's terms apply to it.
